@@ -9,7 +9,7 @@ from typing import Tuple
 
 def readFile(fileName: str, verbose: bool) -> Tuple[list, list, int]:
     """
-    Read and process a file.
+    Read and process an input file into 3 variables.
 
     Args:
         fileName (str): The name of the file to be read.
