@@ -4,7 +4,7 @@ import numpy
 from time import time
 from tqdm import tqdm
 from os import path
-from typing import Tuple
+from typing import List, Tuple
 
 
 def readFile(fileName: str, verbose: bool) -> Tuple[list, list, int]:
@@ -70,26 +70,32 @@ def generatePlainText(amount: int, verbose: bool) -> numpy.ndarray:
     return plainTextArray
 
 
-# calculate cipherTexts from generated PlainText
-def calculateCipherText(publicKey: list[str], PlainTextArray: numpy, verbose: bool):
-    arrayDimensions = PlainTextArray.shape
-    cipherTextArray = numpy.zeros(arrayDimensions, dtype=numpy.intc)
+def calculateCipherText(publicKey: List[str], plainTextArray: numpy.ndarray, verbose: bool) -> numpy.ndarray:
+    """
+    Calculate the corresponding cipher texts using the public key and plain text array.
+
+    Args:
+        publicKey (List[str]): A list of strings representing the public key with placeholders for variables.
+        plainTextArray (numpy.ndarray): A 2D numpy array containing the plain text values.
+        verbose (bool): Whether to print verbose messages.
+
+    Returns:
+        numpy.ndarray: A 2D numpy array containing the calculated cipher text values.
+    """
+    arrayDimensions = plainTextArray.shape
+    cipherTextArray = numpy.zeros(shape=arrayDimensions, 
+                                  dtype=numpy.bool_)
 
     if verbose:
-        print(f'start:\tcalculating {arrayDimensions[0]} cipherTexts')
+        print(f'Calculating {arrayDimensions[0]} corresponding cipher texts')
 
-    # for each PlainText, read the value from x_n and replace it with the corresponding variable in the public key
-    # after the replacement, calculate the row
-    for i in tqdm(range(0, arrayDimensions[0])): # wie viel PlainText durchgehen
-        for j, publicRow in enumerate(publicKey): # wie viele zeilen publickey
-            for variable in reversed(range(0, arrayDimensions[1])): # rückwärts durchgehen
-                # austauschen(ziel, was stattdessen)
-                publicRow = publicRow.replace(f'x_{variable + 1}', str(PlainTextArray[i][variable]))
-            # fertig zeile ausrechnen
-            cipherTextArray[i][j] = round(eval(publicRow) % 2)
-
-    if verbose:
-        print(f'end:\tcipherText calculated\n')
+    # Replace the variables x_n of the public key with the corresponding plain text values to 
+    # calculate the cipher text
+    for column in range(0, arrayDimensions[0]):
+        for row, publicKeyRow in enumerate(publicKey):
+            for variable in reversed(range(0, arrayDimensions[1])):
+                publicKeyRow = publicKeyRow.replace(f'x_{variable + 1}', str(plainTextArray[column][variable]))
+            cipherTextArray[column][row] = eval(publicKeyRow) % 2
 
     return cipherTextArray
 
