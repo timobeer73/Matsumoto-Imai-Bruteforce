@@ -21,7 +21,7 @@ def readFile(fileName: str, verbose: bool) -> Tuple[list, list, int]:
                                 from the file.
     """
     if verbose:
-        print(f'Process file \'{fileName}\'')
+        print(f'Processing file \'{fileName}\'')
 
     # Locate and read the given file.
     folderPath = path.dirname(__file__)
