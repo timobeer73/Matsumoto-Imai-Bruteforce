@@ -56,7 +56,7 @@ def generatePlainText(amount: int, verbose: bool) -> numpy.ndarray:
     plainTextAmount = 2 * math.pow(amount, 2)
 
     if verbose:
-        print(f'Generating {plainTextAmount} plain texts')
+        print(f'Generating {round(plainTextAmount)} plain texts')
 
     plainTextMatrix = numpy.zeros(shape=(1, amount), 
                                   dtype=numpy.bool_)
