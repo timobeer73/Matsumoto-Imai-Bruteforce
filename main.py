@@ -40,39 +40,51 @@ def readFile(fileName: str, verbose: bool) -> Tuple[list, list, int]:
     return publicKey, cipherText, amount
 
 
-def generatePlaintext(amount: int, verbose: bool):
-    plaintextsAmount = int(2 * math.pow(amount, 2))
-    plaintextsArray = numpy.zeros([1, amount], dtype=numpy.intc)
+def generatePlainText(amount: int, verbose: bool) -> numpy.ndarray:
+    """
+    Generate a 2D numpy array of random plain texts.
+
+    Args:
+        amount (int): The number of basic elements/special relations.
+        verbose (bool): Whether to print verbose messages.
+
+    Returns:
+        numpy.ndarray: A 2D numpy array of shape (2 * amount², amount) 
+                       containing random plain texts represented by 
+                       binary values.
+    """
+    plainTextAmount = 2 * math.pow(amount, 2)
 
     if verbose:
-        print(f'start:\tgenerating {plaintextsAmount} plaintexts')
+        print(f'Generating {plainTextAmount} plain texts')
 
-    # create 2 * amount^2 plaintexts
-    while plaintextsArray.shape[0] < int(2 * math.pow(amount, 2)):
-        # 2 = Obergrenze -> {0,1}      ;      [1, amount] tupel = maße -> [zeilen, spalten]
-        plaintextsArray = numpy.vstack((plaintextsArray, numpy.random.choice(2, [1, amount])))
+    plainTextArray = numpy.zeros(shape=(1, amount), 
+                                 dtype=numpy.bool_)
 
-    if verbose:
-        print(f'end:\tplaintexts generated\n')
+    # Generate random plain texts until 2 * amount² rows were generated.
+    while plainTextArray.shape[0] < plainTextAmount:
+        plainTextArray = numpy.vstack((plainTextArray, 
+                                       numpy.random.choice(a=2, 
+                                                           size=(1, amount))))
 
-    return plaintextsArray
+    return plainTextArray
 
 
-# calculate cipherTexts from generated plaintexts
-def calculateCipherText(publicKey: list[str], plaintextsArray: numpy, verbose: bool):
-    arrayDimensions = plaintextsArray.shape
+# calculate cipherTexts from generated PlainText
+def calculateCipherText(publicKey: list[str], PlainTextArray: numpy, verbose: bool):
+    arrayDimensions = PlainTextArray.shape
     cipherTextArray = numpy.zeros(arrayDimensions, dtype=numpy.intc)
 
     if verbose:
         print(f'start:\tcalculating {arrayDimensions[0]} cipherTexts')
 
-    # for each plaintext, read the value from x_n and replace it with the corresponding variable in the public key
+    # for each PlainText, read the value from x_n and replace it with the corresponding variable in the public key
     # after the replacement, calculate the row
-    for i in tqdm(range(0, arrayDimensions[0])): # wie viel plaintext durchgehen
+    for i in tqdm(range(0, arrayDimensions[0])): # wie viel PlainText durchgehen
         for j, publicRow in enumerate(publicKey): # wie viele zeilen publickey
             for variable in reversed(range(0, arrayDimensions[1])): # rückwärts durchgehen
                 # austauschen(ziel, was stattdessen)
-                publicRow = publicRow.replace(f'x_{variable + 1}', str(plaintextsArray[i][variable]))
+                publicRow = publicRow.replace(f'x_{variable + 1}', str(PlainTextArray[i][variable]))
             # fertig zeile ausrechnen
             cipherTextArray[i][j] = round(eval(publicRow) % 2)
 
@@ -83,22 +95,22 @@ def calculateCipherText(publicKey: list[str], plaintextsArray: numpy, verbose: b
 
 
 # create matrix from plain-/cipherText pairs
-def createMatrix(plaintextsArray: numpy, cipherTextsArray: numpy, verbose: bool):
+def createMatrix(PlainTextArray: numpy, cipherTextsArray: numpy, verbose: bool):
     # shape gibt tupel zurück [zeile, spalte] -> [0] bedeutet 0. element des tupels
-    matrixDimension = plaintextsArray.shape[0], plaintextsArray.shape[1] * cipherTextsArray.shape[1]
+    matrixDimension = PlainTextArray.shape[0], PlainTextArray.shape[1] * cipherTextsArray.shape[1]
     matrix = numpy.zeros(matrixDimension, dtype=numpy.intc)
 
     if verbose:
         print(f'start:\tcreating matrix')
 
-    # for each row multiply every plaintext column with every cipherText column
+    # for each row multiply every PlainText column with every cipherText column
     for row in tqdm(range(0, matrixDimension[0])): # zeilen durchgehen
-        for plaintextColumn in range(0, plaintextsArray.shape[1]): # spalten des klartextes durchgehen
+        for PlainTextColumn in range(0, PlainTextArray.shape[1]): # spalten des klartextes durchgehen
             for cipherTextColumn in range(0, cipherTextsArray.shape[1]): # spalten des klartextes durchgehen
                 # [0, 1, 2]         -> [3, 4, 5]          -> [6, 7, 8]
                 # 0 * 3 + [0, 1, 2]    1 * 3 + [0, 1, 2]     2 * 3 + [0, 1, 2]
-                matrix[row][plaintextColumn * plaintextsArray.shape[1] + cipherTextColumn] = \
-                    plaintextsArray[row][plaintextColumn] * cipherTextsArray[row][cipherTextColumn]
+                matrix[row][PlainTextColumn * PlainTextArray.shape[1] + cipherTextColumn] = \
+                    PlainTextArray[row][PlainTextColumn] * cipherTextsArray[row][cipherTextColumn]
     # [1, 2, 3]
     # [4, 5, 8]
     # [1*4, 1*5, ...]
@@ -255,9 +267,9 @@ def executePipeline(inputFile: str, verbose: bool) -> None:
 
     # Read parameters from the cryptoChallenge and generate matrix
     publicKey, cipherText, amount = readFile(inputFile, verbose)
-    plaintextsArray = generatePlaintext(amount, verbose)
-    cipherTextsArray = calculateCipherText(publicKey, plaintextsArray, verbose)
-    matrix = createMatrix(plaintextsArray, cipherTextsArray, verbose)
+    PlainTextArray = generatePlainText(amount, verbose)
+    cipherTextsArray = calculateCipherText(publicKey, PlainTextArray, verbose)
+    matrix = createMatrix(PlainTextArray, cipherTextsArray, verbose)
 
     # Solve initial matrix
     solvedMatrix = gaussElimination(matrix, amount, verbose)
@@ -280,7 +292,7 @@ def executePipeline(inputFile: str, verbose: bool) -> None:
             isCorrect = False
 
     if verbose:
-        print(f'generated plaintext:\n{plaintextsArray}\n\n'
+        print(f'generated PlainText:\n{PlainTextArray}\n\n'
               f'calculated cipherText:\n{cipherTextsArray}\n\n'
               f'constructed matrix:\n{matrix}\n\n'
               f'solved matrix:\n{solvedMatrix}\n\n'
@@ -290,7 +302,7 @@ def executePipeline(inputFile: str, verbose: bool) -> None:
               f'relation matrix:\n{relationsMatrix}\n\n'
               f'free variables of the solution:\n{freeVariablesArraySolution}\n\n'
               f'reduced relation matrix of the solution:\n{reducedRelationsMatrix}\n\n'
-              f'plaintext solution:\n{baseVectorsArraySolution}\n\n'
+              f'PlainText solution:\n{baseVectorsArraySolution}\n\n'
               f'chitext of the solution:\n{resultcipherText}\n\n'
               f'matching:\n{isCorrect}\n\n'
               f'time:\n{time() - startingTime}\n')
