@@ -1,42 +1,45 @@
-from multiprocessing.dummy import Pool as ThreadPool
-from itertools import product
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
-from concurrent.futures import ThreadPoolExecutor
 import math
+import sys
 import numpy
 from time import time
 from tqdm import tqdm
+from os import path
+from typing import Tuple
 
 
-publicKey = []
-ciphertextsArray = numpy.zeros([int(2 * math.pow(7, 2)), 7], dtype=numpy.intc)
-plaintextsArray = numpy.zeros([int(2 * math.pow(7, 2)), 7], dtype=numpy.intc)
+def readFile(fileName: str, verbose: bool) -> Tuple[list, list, int]:
+    """
+    Read and process a file.
 
+    Args:
+        fileName (str): The name of the file to be read.
+        verbose (bool): Whether to print verbose messages.
 
-# read any file with a correct structure (publicKey -> ciphertext -> amount)
-def readFile(inputFileName: str, verbose: bool):
+    Returns:
+        Tuple[list, list, int]: A tuple containing the public key (list), 
+                                cipher text (list), and amount (int) extracted 
+                                from the file.
+    """
     if verbose:
-        print(f'\nstart:\treading file {inputFileName}')
+        print(f'Process file \'{fileName}\'')
 
-    with open(inputFileName, 'r') as file:
+    # Locate and read the given file.
+    folderPath = path.dirname(__file__)
+    filePath = path.join(folderPath, fileName)
+    with open(filePath, 'r') as file:
         text = file.read()
 
-    # Leerzeichen und Zeilenumbrüche weg
+    # Remove blank spaces and linebreaks for easier processing.
     text = text.replace(' ', '').replace('\n', '')
 
-    # Eingrenzen des Strings zur finalen Variable
+    # Separating the text into its variables.
     publicKey = text.split('[')[1].split(']')[0].split(',')
-    ciphertext = text.split('[')[2].split(']')[0].split(',')
-    amount = int(text.split('Relationen:')[1])
+    cipherText = text.split('[')[2].split(']')[0].split(',')
+    amount = int(text.split('relations:')[1])
 
-    if verbose:
-        print(f'end:\tfile read\n')
-
-    return publicKey, ciphertext, amount
+    return publicKey, cipherText, amount
 
 
-# generate 2 * amount^2 plaintexts
 def generatePlaintext(amount: int, verbose: bool):
     plaintextsAmount = int(2 * math.pow(amount, 2))
     plaintextsArray = numpy.zeros([1, amount], dtype=numpy.intc)
@@ -55,12 +58,13 @@ def generatePlaintext(amount: int, verbose: bool):
     return plaintextsArray
 
 
-# calculate ciphertexts from generated plaintexts
-def calculateCiphertext(amount, verbose=False):
-    arrayDimensions = ciphertextsArray.shape
+# calculate cipherTexts from generated plaintexts
+def calculateCipherText(publicKey: list[str], plaintextsArray: numpy, verbose: bool):
+    arrayDimensions = plaintextsArray.shape
+    cipherTextArray = numpy.zeros(arrayDimensions, dtype=numpy.intc)
 
     if verbose:
-        print(f'start:\tcalculating {arrayDimensions[0]} ciphertexts')
+        print(f'start:\tcalculating {arrayDimensions[0]} cipherTexts')
 
     # for each plaintext, read the value from x_n and replace it with the corresponding variable in the public key
     # after the replacement, calculate the row
@@ -70,31 +74,31 @@ def calculateCiphertext(amount, verbose=False):
                 # austauschen(ziel, was stattdessen)
                 publicRow = publicRow.replace(f'x_{variable + 1}', str(plaintextsArray[i][variable]))
             # fertig zeile ausrechnen
-            ciphertextsArray[i][j] = round(eval(publicRow) % 2)
+            cipherTextArray[i][j] = round(eval(publicRow) % 2)
 
     if verbose:
-        print(f'end:\tciphertext calculated\n')
+        print(f'end:\tcipherText calculated\n')
 
-    return ciphertextsArray
+    return cipherTextArray
 
 
-# create matrix from plain-/ciphertext pairs
-def createMatrix(plaintextsArray: numpy, ciphertextsArray: numpy, verbose: bool):
+# create matrix from plain-/cipherText pairs
+def createMatrix(plaintextsArray: numpy, cipherTextsArray: numpy, verbose: bool):
     # shape gibt tupel zurück [zeile, spalte] -> [0] bedeutet 0. element des tupels
-    matrixDimension = plaintextsArray.shape[0], plaintextsArray.shape[1] * ciphertextsArray.shape[1]
+    matrixDimension = plaintextsArray.shape[0], plaintextsArray.shape[1] * cipherTextsArray.shape[1]
     matrix = numpy.zeros(matrixDimension, dtype=numpy.intc)
 
     if verbose:
         print(f'start:\tcreating matrix')
 
-    # for each row multiply every plaintext column with every ciphertext column
+    # for each row multiply every plaintext column with every cipherText column
     for row in tqdm(range(0, matrixDimension[0])): # zeilen durchgehen
         for plaintextColumn in range(0, plaintextsArray.shape[1]): # spalten des klartextes durchgehen
-            for ciphertextColumn in range(0, ciphertextsArray.shape[1]): # spalten des klartextes durchgehen
+            for cipherTextColumn in range(0, cipherTextsArray.shape[1]): # spalten des klartextes durchgehen
                 # [0, 1, 2]         -> [3, 4, 5]          -> [6, 7, 8]
                 # 0 * 3 + [0, 1, 2]    1 * 3 + [0, 1, 2]     2 * 3 + [0, 1, 2]
-                matrix[row][plaintextColumn * plaintextsArray.shape[1] + ciphertextColumn] = \
-                    plaintextsArray[row][plaintextColumn] * ciphertextsArray[row][ciphertextColumn]
+                matrix[row][plaintextColumn * plaintextsArray.shape[1] + cipherTextColumn] = \
+                    plaintextsArray[row][plaintextColumn] * cipherTextsArray[row][cipherTextColumn]
     # [1, 2, 3]
     # [4, 5, 8]
     # [1*4, 1*5, ...]
@@ -223,8 +227,8 @@ def getBaseVector(solvedMatrix: numpy, freeVariablesArray, verbose: bool):
     return baseVectorsArray
 
 
-# calculate the relation matrix of the given ciphertext
-def calculateRelationsMatrix(baseVectorsArray, amount, ciphertext, verbose: bool):
+# calculate the relation matrix of the given cipherText
+def calculateRelationsMatrix(baseVectorsArray, amount, cipherText, verbose: bool):
     relationsMatrix = numpy.zeros([0, amount], dtype=numpy.intc)
 
     if verbose:
@@ -232,11 +236,11 @@ def calculateRelationsMatrix(baseVectorsArray, amount, ciphertext, verbose: bool
 
     for vector in baseVectorsArray:
         relation = numpy.zeros([1, amount], dtype=numpy.intc)
-        # AND operation with the ciphertext (size n) with n parts of the vector
+        # AND operation with the cipherText (size n) with n parts of the vector
         for i in range(0, amount):
             result = 0
             for j in range(0, amount):
-                result += int(ciphertext[j]) * vector[i * amount + j]
+                result += int(cipherText[j]) * vector[i * amount + j]
             relation[0][i] = result % 2
         relationsMatrix = numpy.vstack((relationsMatrix, relation))
 
@@ -246,67 +250,59 @@ def calculateRelationsMatrix(baseVectorsArray, amount, ciphertext, verbose: bool
     return relationsMatrix
 
 
-def threadChitext(amount, verbose: bool):
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        future = executor.submit(calculateCiphertext, amount)
-        return_value = future.result()
-        print(return_value)
+def executePipeline(inputFile: str, verbose: bool) -> None:
+    startingTime = time()
 
+    # Read parameters from the cryptoChallenge and generate matrix
+    publicKey, cipherText, amount = readFile(inputFile, verbose)
+    plaintextsArray = generatePlaintext(amount, verbose)
+    cipherTextsArray = calculateCipherText(publicKey, plaintextsArray, verbose)
+    matrix = createMatrix(plaintextsArray, cipherTextsArray, verbose)
 
-# order of events
-def routine(inputFile: str, InputVerboseLevel):
-    start = time()
+    # Solve initial matrix
+    solvedMatrix = gaussElimination(matrix, amount, verbose)
+    freeVariablesArray = getFreeVariables(solvedMatrix, verbose)
+    reducedMatrix = reduceMatrix(solvedMatrix, freeVariablesArray, verbose)
+    baseVectorsArray = getBaseVector(reducedMatrix, freeVariablesArray, verbose)
+    relationsMatrix = calculateRelationsMatrix(baseVectorsArray, amount, cipherText, verbose)
 
-    # read and generate matrix
-    test, ciphertext, amount = readFile(inputFile, InputVerboseLevel)
-    global publicKey
-    publicKey = test
-    test2 = generatePlaintext(amount, InputVerboseLevel)
-    global ciphertextsArray
-    ciphertextsArray = test2
-    threadChitext(amount / 2, InputVerboseLevel)
-    exit()
-    #ciphertextsArray = calculateCiphertext(publicKey, plaintextsArray, InputVerboseLevel)
-    matrix = createMatrix(plaintextsArray, ciphertextsArray, InputVerboseLevel)
+    # Solve matrix consisting of the vectors
+    solvedRelationsMatrix = gaussElimination(relationsMatrix, amount, verbose)
+    freeVariablesArraySolution = getFreeVariables(solvedRelationsMatrix, verbose)
+    reducedRelationsMatrix = reduceMatrix(solvedRelationsMatrix, freeVariablesArraySolution, verbose)
+    baseVectorsArraySolution = getBaseVector(reducedRelationsMatrix, freeVariablesArraySolution, verbose)
 
-    # solve initial matrix
-    solvedMatrix = gaussElimination(matrix, amount, InputVerboseLevel)
-    freeVariablesArray = getFreeVariables(solvedMatrix, InputVerboseLevel)
-    reducedMatrix = reduceMatrix(solvedMatrix, freeVariablesArray, InputVerboseLevel)
-    baseVectorsArray = getBaseVector(reducedMatrix, freeVariablesArray, InputVerboseLevel)
-    relationsMatrix = calculateRelationsMatrix(baseVectorsArray, amount, ciphertext, InputVerboseLevel)
-
-    # solve matrix consisting of the vectors
-    solvedRelationsMatrix = gaussElimination(relationsMatrix, amount, InputVerboseLevel)
-    freeVariablesArraySolution = getFreeVariables(solvedRelationsMatrix, InputVerboseLevel)
-    reducedRelationsMatrix = reduceMatrix(solvedRelationsMatrix, freeVariablesArraySolution, InputVerboseLevel)
-    baseVectorsArraySolution = getBaseVector(reducedRelationsMatrix, freeVariablesArraySolution, InputVerboseLevel)
-
-    # verify result
-    resultCiphertext = calculateCiphertext(publicKey, numpy.array(baseVectorsArraySolution), InputVerboseLevel)
+    # Verify result
+    resultcipherText = calculateCipherText(publicKey, numpy.array(baseVectorsArraySolution), verbose)
     isCorrect = True
-    for i in range(0, resultCiphertext.shape[1]):
-        if int(resultCiphertext[0][i]) != int(ciphertext[i]):
+    for i in range(0, resultcipherText.shape[1]):
+        if int(resultcipherText[0][i]) != int(cipherText[i]):
             isCorrect = False
 
-    print(f'generated plaintext:\n{plaintextsArray}\n\n'
-          f'calculated ciphertext:\n{ciphertextsArray}\n\n'
-          f'constructed matrix:\n{matrix}\n\n'
-          f'solved matrix:\n{solvedMatrix}\n\n'
-          f'reduced matrix:\n{reducedMatrix}\n\n'
-          f'free variables:\n{freeVariablesArray}\n\n'
-          f'base vectors:\n{baseVectorsArray}\n\n'
-          f'relation matrix:\n{relationsMatrix}\n\n'
-          f'free variables of the solution:\n{freeVariablesArraySolution}\n\n'
-          f'reduced relation matrix of the solution:\n{reducedRelationsMatrix}\n\n'
-          f'plaintext solution:\n{baseVectorsArraySolution}\n\n'
-          f'chitext of the solution:\n{resultCiphertext}\n\n'
-          f'matching:\n{isCorrect}\n\n'
-          f'time:\n{time() - start}\n')
+    if verbose:
+        print(f'generated plaintext:\n{plaintextsArray}\n\n'
+              f'calculated cipherText:\n{cipherTextsArray}\n\n'
+              f'constructed matrix:\n{matrix}\n\n'
+              f'solved matrix:\n{solvedMatrix}\n\n'
+              f'reduced matrix:\n{reducedMatrix}\n\n'
+              f'free variables:\n{freeVariablesArray}\n\n'
+              f'base vectors:\n{baseVectorsArray}\n\n'
+              f'relation matrix:\n{relationsMatrix}\n\n'
+              f'free variables of the solution:\n{freeVariablesArraySolution}\n\n'
+              f'reduced relation matrix of the solution:\n{reducedRelationsMatrix}\n\n'
+              f'plaintext solution:\n{baseVectorsArraySolution}\n\n'
+              f'chitext of the solution:\n{resultcipherText}\n\n'
+              f'matching:\n{isCorrect}\n\n'
+              f'time:\n{time() - startingTime}\n')
+    else:
+        print(baseVectorsArraySolution)
 
 
 if __name__ == '__main__':
-    fileName = 'kryptochallengegruppeTest.txt'
-    verboseLevel = True
+    if len(sys.argv) < 3:
+        print('Usage: python main.py \'fileName\' verbose')
+        exit(-1)
+    fileName = sys.argv[1]
+    verbose = bool(sys.argv[2])
 
-    routine(fileName, verboseLevel)
+    executePipeline(fileName, verbose)
