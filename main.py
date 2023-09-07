@@ -58,71 +58,74 @@ def generatePlainText(amount: int, verbose: bool) -> numpy.ndarray:
     if verbose:
         print(f'Generating {plainTextAmount} plain texts')
 
-    plainTextArray = numpy.zeros(shape=(1, amount), 
-                                 dtype=numpy.bool_)
+    plainTextMatrix = numpy.zeros(shape=(1, amount), 
+                                  dtype=numpy.bool_)
 
     # Generate random plain texts until 2 * amount² rows were generated.
-    while plainTextArray.shape[0] < plainTextAmount:
-        plainTextArray = numpy.vstack((plainTextArray, 
-                                       numpy.random.choice(a=2, 
-                                                           size=(1, amount))))
+    while plainTextMatrix.shape[0] < plainTextAmount:
+        plainTextMatrix = numpy.vstack((plainTextMatrix, 
+                                        numpy.random.choice(a=2, 
+                                                            size=(1, amount))))
 
-    return plainTextArray
+    return plainTextMatrix
 
 
-def calculateCipherText(publicKey: List[str], plainTextArray: numpy.ndarray, verbose: bool) -> numpy.ndarray:
+def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray, verbose: bool) -> numpy.ndarray:
     """
     Calculate the corresponding cipher texts using the public key and plain text array.
 
     Args:
         publicKey (List[str]): A list of strings representing the public key with placeholders for variables.
-        plainTextArray (numpy.ndarray): A 2D numpy array containing the plain text values.
+        plainTextMatrix (numpy.ndarray): A 2D numpy array containing the plain text values.
         verbose (bool): Whether to print verbose messages.
 
     Returns:
         numpy.ndarray: A 2D numpy array containing the calculated cipher text values.
     """
-    arrayDimensions = plainTextArray.shape
-    cipherTextArray = numpy.zeros(shape=arrayDimensions, 
-                                  dtype=numpy.bool_)
+    arrayDimensions = plainTextMatrix.shape
+    cipherTextMatrix = numpy.zeros(shape=arrayDimensions, 
+                                   dtype=numpy.bool_)
 
     if verbose:
         print(f'Calculating {arrayDimensions[0]} corresponding cipher texts')
 
     # Replace the variables x_n of the public key with the corresponding plain text values to 
     # calculate the cipher text
-    for column in range(0, arrayDimensions[0]):
-        for row, publicKeyRow in enumerate(publicKey):
+    for row in range(0, arrayDimensions[0]):
+        for column, publicKeyRow in enumerate(publicKey):
             for variable in reversed(range(0, arrayDimensions[1])):
-                publicKeyRow = publicKeyRow.replace(f'x_{variable + 1}', str(plainTextArray[column][variable]))
-            cipherTextArray[column][row] = eval(publicKeyRow) % 2
+                publicKeyRow = publicKeyRow.replace(f'x_{variable + 1}', str(plainTextMatrix[row][variable]))
+            cipherTextMatrix[row][column] = eval(publicKeyRow) % 2
 
-    return cipherTextArray
+    return cipherTextMatrix
 
 
-# create matrix from plain-/cipherText pairs
-def createMatrix(PlainTextArray: numpy, cipherTextsArray: numpy, verbose: bool):
-    # shape gibt tupel zurück [zeile, spalte] -> [0] bedeutet 0. element des tupels
-    matrixDimension = PlainTextArray.shape[0], PlainTextArray.shape[1] * cipherTextsArray.shape[1]
-    matrix = numpy.zeros(matrixDimension, dtype=numpy.intc)
+def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.ndarray, verbose: bool) -> numpy.ndarray:
+    """
+    Calculate a matrix by performing logical AND operations between plain text and cipher text matrices.
 
-    if verbose:
-        print(f'start:\tcreating matrix')
+    Args:
+        plainTextMatrix (numpy.ndarray): A 2D numpy array containing plain text values.
+        cipherTextMatrix (numpy.ndarray): A 2D numpy array containing cipher text values.
+        verbose (bool): Whether to print verbose messages.
 
-    # for each row multiply every PlainText column with every cipherText column
-    for row in tqdm(range(0, matrixDimension[0])): # zeilen durchgehen
-        for PlainTextColumn in range(0, PlainTextArray.shape[1]): # spalten des klartextes durchgehen
-            for cipherTextColumn in range(0, cipherTextsArray.shape[1]): # spalten des klartextes durchgehen
-                # [0, 1, 2]         -> [3, 4, 5]          -> [6, 7, 8]
-                # 0 * 3 + [0, 1, 2]    1 * 3 + [0, 1, 2]     2 * 3 + [0, 1, 2]
-                matrix[row][PlainTextColumn * PlainTextArray.shape[1] + cipherTextColumn] = \
-                    PlainTextArray[row][PlainTextColumn] * cipherTextsArray[row][cipherTextColumn]
-    # [1, 2, 3]
-    # [4, 5, 8]
-    # [1*4, 1*5, ...]
+    Returns:
+        numpy.ndarray: A 2D numpy array containing the result of logical AND operations between
+                       corresponding elements of the input matrices.
+    """
+    matrixDimension = plainTextMatrix.shape[0], plainTextMatrix.shape[1] * cipherTextMatrix.shape[1]
+    matrix = numpy.zeros(shape=matrixDimension, 
+                         dtype=numpy.bool_)
 
     if verbose:
-        print(f'end:\tcreated matrix\n')
+        print(f'Calculating matrix from plain and cipher text')
+
+    # Logical AND every single column of a plain text row with every column of the cipher text
+    for row in range(0, matrixDimension[0]):
+        for plainTextColumn in range(0, plainTextMatrix.shape[1]):
+            for cipherTextColumn in range(0, cipherTextMatrix.shape[1]):
+                matrix[row][plainTextColumn * plainTextMatrix.shape[1] + cipherTextColumn] = \
+                    bool(plainTextMatrix[row][plainTextColumn]) and bool(cipherTextMatrix[row][cipherTextColumn])
 
     return matrix
 
@@ -275,7 +278,7 @@ def executePipeline(inputFile: str, verbose: bool) -> None:
     publicKey, cipherText, amount = readFile(inputFile, verbose)
     PlainTextArray = generatePlainText(amount, verbose)
     cipherTextsArray = calculateCipherText(publicKey, PlainTextArray, verbose)
-    matrix = createMatrix(PlainTextArray, cipherTextsArray, verbose)
+    matrix = calculatingMatrix(PlainTextArray, cipherTextsArray, verbose)
 
     # Solve initial matrix
     solvedMatrix = gaussElimination(matrix, amount, verbose)
