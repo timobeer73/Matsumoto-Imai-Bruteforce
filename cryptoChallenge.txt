@@ -1,4 +1,4 @@
-Public Key:
+PublicKey:
 [
     x_1*x_2 + x_2*x_3 + x_1*x_4 + x_1*x_5 + x_2*x_5 + x_3*x_5 + x_1*x_6 + 
         x_3*x_6 + x_4*x_6 + x_1*x_7 + x_2*x_7 + x_6*x_7 + x_1*x_8 + x_4*x_8 + 
@@ -4952,8 +4952,10 @@ Public Key:
         x_18 + x_19 + x_21 + x_22 + x_24 + x_27 + x_28 + x_29 + x_30 + x_32 + 
         x_33 + x_35 + x_36 + x_40 + x_42 + x_44 + x_49
 ]
- Chitext:
+
+CipherText:
 [ 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 
 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1 ]
-Anzahl Basiselemente/Spezielle Relationen:
+
+Number of basic elements/special relations:
 49
