@@ -7,7 +7,7 @@ from os import path
 from typing import List, Tuple
 
 
-def readFile(fileName: str, verbose: bool) -> Tuple[list, list, int]:
+def readFile(fileName: str) -> Tuple[list, list, int]:
     """
     Read and process an input file into 3 variables.
 
@@ -40,7 +40,7 @@ def readFile(fileName: str, verbose: bool) -> Tuple[list, list, int]:
     return publicKey, cipherText, amount
 
 
-def generatePlainText(amount: int, verbose: bool) -> numpy.ndarray:
+def generatePlainText(amount: int) -> numpy.ndarray:
     """
     Generate a 2D numpy array of random plain texts.
 
@@ -64,13 +64,13 @@ def generatePlainText(amount: int, verbose: bool) -> numpy.ndarray:
     # Generate random plain texts until 2 * amount² rows were generated.
     while plainTextMatrix.shape[0] < plainTextAmount:
         plainTextMatrix = numpy.vstack((plainTextMatrix, 
-                                        numpy.random.choice(a=2, 
+                                        numpy.random.choice(a=numpy.array([True, False]), 
                                                             size=(1, amount))))
 
     return plainTextMatrix
 
 
-def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray, verbose: bool) -> numpy.ndarray:
+def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray) -> numpy.ndarray:
     """
     Calculate the corresponding cipher texts using the public key and plain text array.
 
@@ -100,7 +100,7 @@ def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray, ve
     return cipherTextMatrix
 
 
-def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.ndarray, verbose: bool) -> numpy.ndarray:
+def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.ndarray) -> numpy.ndarray:
     """
     Calculate a matrix by performing logical AND operations between plain text and cipher text matrices.
 
@@ -118,7 +118,7 @@ def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.nd
                          dtype=numpy.bool_)
 
     if verbose:
-        print(f'Calculating matrix from plain and cipher text')
+        print('Calculating matrix from plain and cipher text')
 
     # Logical AND every single column of a plain text row with every column of the cipher text
     for row in range(0, matrixDimension[0]):
@@ -130,44 +130,60 @@ def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.nd
     return matrix
 
 
-# form a matrix into a triangle shape
-def gaussElimination(matrix: numpy, amount: int, verbose: bool):
-    # eliminate 'zero-rows'
-    matrix = matrix[~numpy.all(matrix == 0, axis=1)]
+def gaussianElimination(matrix: numpy.ndarray) -> numpy.ndarray:
+    """
+    Perform Gaussian elimination on a binary matrix to simplify and solve the system of equations.
 
-    matrixDimension = matrix.shape
-    solvedMatrix = numpy.zeros([0, matrixDimension[1]], dtype=numpy.intc)
-    optimalRowSum = math.pow(amount, 2)
+    Args:
+        matrix (numpy.ndarray): A 2D numpy array representing a binary matrix.
 
+    Returns:
+        numpy.ndarray: A 2D numpy array representing the simplified matrix after Gaussian elimination.
+    """
     if verbose:
-        print(f'start:\tgaussian elimination')
+        print('Starting gaussian elimination')
 
-    for column in tqdm(range(0, matrixDimension[1])):
-        if matrix.shape[0] > 0:
-            # bring all rows with a '1' in column n to the top
+    # Remove every duplicate and False/zero only rows
+    matrix = numpy.unique(ar=matrix, 
+                          axis=0)
+    matrix = matrix[~numpy.all(matrix == False, 
+                               axis=1)]
+    
+    solvedMatrix = numpy.zeros(shape=[0, matrix.shape[1]], 
+                               dtype=numpy.bool_)
+
+    for column in range(0, matrix.shape[1]):
+        if matrix.shape[0] > 1:
+            # Move all rows with a True/one in the nth column to the top of the matrix
             matrix = numpy.flipud(matrix[matrix[:, column].argsort()])
-            # find the optimal row (least amount of '1's in the row)
-            for row in range(0, matrix.shape[0]):
-                currentRowSum = numpy.sum(matrix[row][:])
-                if matrix[row][column] == 1 and currentRowSum < optimalRowSum and matrix.shape[0] < 1:
-                    optimalRowSum = currentRowSum
-                    matrix[column][:] = matrix[row][:]
-            # multiply the current pivot element with all followings rows, which contain a '1' in column n
-            for followingRow in range(1, matrix.shape[0]):
-                if matrix[followingRow][column] == 1:
-                    matrix[followingRow] = (matrix[followingRow] + matrix[0]) % 2
-            # store the current pivot row in a new output matrix
+            
+            # Logical XOR the current pivot row with all followings rows, which contain a True/one in the nth column
+            if matrix[0][column] == True:
+                for row in range(1, matrix.shape[0]):
+                    if matrix[row][column] == True:
+                        matrix[row][:] = numpy.logical_xor(matrix[0][:], matrix[row][:])
+                    else:
+                        break
+            else:
+                continue
+        
+        if matrix.shape[0] > 0:  
+            # Store the current pivot row in the output matrix and delete the same row in the input matrix
             solvedMatrix = numpy.vstack([solvedMatrix, matrix[0][:]])
-            matrix = numpy.delete(matrix, 0, 0)
-
-    if verbose:
-        print(f'end:\ttriangle from completed\n')
+            matrix = numpy.delete(arr=matrix, 
+                                  obj=0, 
+                                  axis=0)
+        else:
+            break
+        
+    solvedMatrix = solvedMatrix[~numpy.all(solvedMatrix == False, 
+                                           axis=1)]
 
     return solvedMatrix
 
 
 # get every free variable of a matrix
-def getFreeVariables(solvedMatrix: numpy, verbose: bool):
+def getFreeVariables(solvedMatrix: numpy):
     freeVariablesArray = []
     matrixDimension = solvedMatrix.shape
 
@@ -191,7 +207,7 @@ def getFreeVariables(solvedMatrix: numpy, verbose: bool):
 
 
 # reduce the matrix two its lowest form
-def reduceMatrix(matrix, freeVariablesArray, verbose: bool):
+def reduceMatrix(matrix, freeVariablesArray):
     # eliminate 'zero-rows'
     matrix = matrix[~numpy.all(matrix == 0, axis=1)]
     matrixDimension = matrix.shape
@@ -223,7 +239,7 @@ def reduceMatrix(matrix, freeVariablesArray, verbose: bool):
 
 
 # get the base vectors of a matrix
-def getBaseVector(solvedMatrix: numpy, freeVariablesArray, verbose: bool):
+def getBaseVector(solvedMatrix: numpy, freeVariablesArray):
     baseVectorsArray = []
     temporaryMatrix = solvedMatrix
     temporaryMatrix = temporaryMatrix[~numpy.all(temporaryMatrix == 0, axis=1)]
@@ -249,7 +265,7 @@ def getBaseVector(solvedMatrix: numpy, freeVariablesArray, verbose: bool):
 
 
 # calculate the relation matrix of the given cipherText
-def calculateRelationsMatrix(baseVectorsArray, amount, cipherText, verbose: bool):
+def calculateRelationsMatrix(baseVectorsArray, amount, cipherText):
     relationsMatrix = numpy.zeros([0, amount], dtype=numpy.intc)
 
     if verbose:
@@ -271,37 +287,40 @@ def calculateRelationsMatrix(baseVectorsArray, amount, cipherText, verbose: bool
     return relationsMatrix
 
 
-def executePipeline(inputFile: str, verbose: bool) -> None:
+def executePipeline(inputFile: str) -> None:
     startingTime = time()
 
     # Read parameters from the cryptoChallenge and generate matrix
-    publicKey, cipherText, amount = readFile(inputFile, verbose)
-    PlainTextArray = generatePlainText(amount, verbose)
-    cipherTextsArray = calculateCipherText(publicKey, PlainTextArray, verbose)
-    matrix = calculatingMatrix(PlainTextArray, cipherTextsArray, verbose)
+    publicKey, cipherText, amount = readFile(inputFile)
+    numpy.set_printoptions(threshold=sys.maxsize)
+    plainTextArray = generatePlainText(amount)
+    cipherTextsArray = calculateCipherText(publicKey, plainTextArray)
+    matrix = calculatingMatrix(plainTextArray, cipherTextsArray)
 
     # Solve initial matrix
-    solvedMatrix = gaussElimination(matrix, amount, verbose)
-    freeVariablesArray = getFreeVariables(solvedMatrix, verbose)
-    reducedMatrix = reduceMatrix(solvedMatrix, freeVariablesArray, verbose)
-    baseVectorsArray = getBaseVector(reducedMatrix, freeVariablesArray, verbose)
-    relationsMatrix = calculateRelationsMatrix(baseVectorsArray, amount, cipherText, verbose)
+    solvedMatrix = gaussianElimination(matrix)
+    print(solvedMatrix)
+    exit()
+    freeVariablesArray = getFreeVariables(solvedMatrix)
+    reducedMatrix = reduceMatrix(solvedMatrix, freeVariablesArray)
+    baseVectorsArray = getBaseVector(reducedMatrix, freeVariablesArray)
+    relationsMatrix = calculateRelationsMatrix(baseVectorsArray, amount, cipherText)
 
     # Solve matrix consisting of the vectors
-    solvedRelationsMatrix = gaussElimination(relationsMatrix, amount, verbose)
-    freeVariablesArraySolution = getFreeVariables(solvedRelationsMatrix, verbose)
-    reducedRelationsMatrix = reduceMatrix(solvedRelationsMatrix, freeVariablesArraySolution, verbose)
-    baseVectorsArraySolution = getBaseVector(reducedRelationsMatrix, freeVariablesArraySolution, verbose)
+    solvedRelationsMatrix = gaussianElimination(relationsMatrix, amount)
+    freeVariablesArraySolution = getFreeVariables(solvedRelationsMatrix)
+    reducedRelationsMatrix = reduceMatrix(solvedRelationsMatrix, freeVariablesArraySolution)
+    baseVectorsArraySolution = getBaseVector(reducedRelationsMatrix, freeVariablesArraySolution)
 
     # Verify result
-    resultcipherText = calculateCipherText(publicKey, numpy.array(baseVectorsArraySolution), verbose)
+    resultcipherText = calculateCipherText(publicKey, numpy.array(baseVectorsArraySolution))
     isCorrect = True
     for i in range(0, resultcipherText.shape[1]):
         if int(resultcipherText[0][i]) != int(cipherText[i]):
             isCorrect = False
 
     if verbose:
-        print(f'generated PlainText:\n{PlainTextArray}\n\n'
+        print(f'generated PlainText:\n{plainTextArray}\n\n'
               f'calculated cipherText:\n{cipherTextsArray}\n\n'
               f'constructed matrix:\n{matrix}\n\n'
               f'solved matrix:\n{solvedMatrix}\n\n'
@@ -323,7 +342,8 @@ if __name__ == '__main__':
     if len(sys.argv) < 3:
         print('Usage: python main.py \'fileName\' verbose')
         exit(-1)
-    fileName = sys.argv[1]
+    
     verbose = bool(sys.argv[2])
+    fileName = sys.argv[1]
 
-    executePipeline(fileName, verbose)
+    executePipeline(fileName)
