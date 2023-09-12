@@ -242,38 +242,44 @@ def reduceMatrix(matrix: numpy.ndarray, freeVariables: List[int]) -> numpy.ndarr
     return matrix
 
 
-# get the base vectors of a matrix
-def getBaseVector(solvedMatrix: numpy, freeVariablesArray):
-    baseVectorsArray = []
-    temporaryMatrix = solvedMatrix
-    temporaryMatrix = temporaryMatrix[~numpy.all(temporaryMatrix == 0, axis=1)]
+def getBaseVectors(matrix: numpy.ndarray, freeVariables: List[int]) -> List[numpy.ndarray]:
+    """
+    Find and return the base vectors from a binary matrix based on free variables.
 
+    Args:
+        matrix (numpy.ndarray): A 2D numpy array representing a binary matrix.
+        freeVariables (List[int]): A list of integers representing the indices of free variables.
+
+    Returns:
+        List[numpy.ndarray]: A list of numpy arrays representing the base vectors.
+    """
     if verbose:
-        print(f'start:\tgetting the base vectors')
+        print('Searching for base vectors')
+    
+    # Insert extra rows to extract complete vectors
+    for variable in freeVariables:
+        matrix = numpy.insert(arr=matrix, 
+                              obj=variable,
+                              values=numpy.zeros(shape=[1, matrix.shape[1]], 
+                                                 dtype=numpy.bool_), 
+                              axis=0)
+        matrix[variable][variable] = 1
 
-    # insert extra rows for easier vector extraction
-    for variable in freeVariablesArray:
-        temporaryMatrix = numpy.insert(temporaryMatrix, variable - 1,
-                                       numpy.zeros([1, temporaryMatrix.shape[1]], dtype=numpy.intc), 0)
-        temporaryMatrix[variable - 1][variable - 1] = 1
+    # Save all columns which represent free variables
+    baseVectors = []
+    matrix = matrix.T
+    for variable in reversed(freeVariables):
+        baseVectors.append(matrix[:][variable])
 
-    # save all columns of a free variable
-    temporaryMatrix = temporaryMatrix.T
-    for variable in reversed(freeVariablesArray):
-        baseVectorsArray.append(temporaryMatrix[:][variable - 1])
-
-    if verbose:
-        print(f'end:\tbase vectors found\n')
-
-    return baseVectorsArray
+    return baseVectors
 
 
-# calculate the relation matrix of the given cipherText
 def calculateRelationsMatrix(baseVectorsArray, amount, cipherText):
-    relationsMatrix = numpy.zeros([0, amount], dtype=numpy.intc)
-
     if verbose:
-        print(f'start:\tcalculating relation matrix')
+        print('Calculating relations matrix')
+    
+    relationsMatrix = numpy.zeros(shape=[0, amount], 
+                                  dtype=numpy.bool_)
 
     for vector in baseVectorsArray:
         relation = numpy.zeros([1, amount], dtype=numpy.intc)
@@ -303,18 +309,16 @@ def executePipeline(inputFile: str) -> None:
 
     # Solve initial matrix
     solvedMatrix = gaussianElimination(matrix)
-    print(solvedMatrix)
-    exit()
     freeVariablesArray = getFreeVariables(solvedMatrix)
     reducedMatrix = reduceMatrix(solvedMatrix, freeVariablesArray)
-    baseVectorsArray = getBaseVector(reducedMatrix, freeVariablesArray)
+    baseVectorsArray = getBaseVectors(reducedMatrix, freeVariablesArray)
     relationsMatrix = calculateRelationsMatrix(baseVectorsArray, amount, cipherText)
 
     # Solve matrix consisting of the vectors
     solvedRelationsMatrix = gaussianElimination(relationsMatrix, amount)
     freeVariablesArraySolution = getFreeVariables(solvedRelationsMatrix)
     reducedRelationsMatrix = reduceMatrix(solvedRelationsMatrix, freeVariablesArraySolution)
-    baseVectorsArraySolution = getBaseVector(reducedRelationsMatrix, freeVariablesArraySolution)
+    baseVectorsArraySolution = getBaseVectors(reducedRelationsMatrix, freeVariablesArraySolution)
 
     # Verify result
     resultcipherText = calculateCipherText(publicKey, numpy.array(baseVectorsArraySolution))
