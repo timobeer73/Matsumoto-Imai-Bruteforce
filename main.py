@@ -196,46 +196,48 @@ def getFreeVariables(matrix: numpy.ndarray) -> List[int]:
         print('Searching for free variables')
 
     # Check if the ith column and row is True/one. If not add it to the free variables
-    freeVariablesArray = []
+    freeVariables = []
     for i in range(0, matrix.shape[0]):
         if matrix[i][i] == False:
-            freeVariablesArray.append(i + 1)
+            freeVariables.append(i)
     
     # Add additional free variables beyond the current matrix row size
     for i in range(matrix.shape[0], matrix.shape[1]):
-        freeVariablesArray.append(i + 1)
+        freeVariables.append(i)
 
-    return freeVariablesArray
+    return freeVariables
 
 
-# reduce the matrix two its lowest form
-def reduceMatrix(matrix, freeVariablesArray):
-    # eliminate 'zero-rows'
-    matrix = matrix[~numpy.all(matrix == 0, axis=1)]
-    matrixDimension = matrix.shape
+def reduceMatrix(matrix: numpy.ndarray, freeVariables: List[int]) -> numpy.ndarray:
+    """
+    Reduce a binary matrix by performing additional operations based on free variables.
 
+    Args:
+        matrix (numpy.ndarray): A 2D numpy array representing a binary matrix.
+        freeVariables (List[int]): A list of integers representing the indices of free variables.
+
+    Returns:
+        numpy.ndarray: A 2D numpy array representing the reduced binary matrix.
+    """
     if verbose:
-        print(f'start:\treducing matrix')
+        print('Reducing matrix')
 
-    # iterate through the columns (except the first)
-    for column in tqdm(range(1, matrixDimension[1])):
-        # if it is not a pivot column and it is not already reduced
-        if column + 1 not in freeVariablesArray and numpy.sum(matrix.T[column]) > 1:
+    for column in range(1, matrix.shape[1]):
+        # If the column is not a free variable and not fully reduced
+        if column not in freeVariables and numpy.sum(matrix.T[column]) > 1:
             currentPivotRow = 0
-            # iterate upwards through the rows
-            for row in range(matrixDimension[0] - 1, -1, -1):
+            # Iterate upwards through the rows
+            for row in range(matrix.shape[0] - 1, -1, -1):
                 value = matrix[row][column]
-                # find the pivot element
-                if value == 1 and currentPivotRow == 0:
-                    currentPivotRow = row
-                # xor every row above with a '1' with the current pivot row
-                elif value == 1:
-                    matrix[row] = (matrix[row] + matrix[currentPivotRow]) % 2
+                # Find the pivot element and logical XOR every row above containing a True/one
+                if value == True:
+                    if currentPivotRow == 0:
+                        currentPivotRow = row
+                    else:
+                        matrix[row][:] = numpy.logical_xor(matrix[row][:], matrix[currentPivotRow][:])
 
-    matrix = matrix[~numpy.all(matrix == 0, axis=1)]
-
-    if verbose:
-        print(f'end:\tmatrix reduced\n')
+    matrix = matrix[~numpy.all(matrix == False, 
+                               axis=1)]
 
     return matrix
 
