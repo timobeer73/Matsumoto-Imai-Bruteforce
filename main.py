@@ -1,5 +1,6 @@
 import numpy
 from os import path
+import sys
 from sys import argv
 from time import time
 from math import pow as mathPow
@@ -12,7 +13,6 @@ def readFile(fileName: str) -> Tuple[list, list, int]:
 
     Args:
         fileName (str): The name of the file to be read.
-        verbose (bool): Whether to print verbose messages.
 
     Returns:
         Tuple[list, list, int]: A tuple containing the public key (list), 
@@ -20,7 +20,7 @@ def readFile(fileName: str) -> Tuple[list, list, int]:
                                 from the file.
     """
     if verbose:
-        print(f'Processing file \'{fileName}\'')
+        print(f'- Processing file \'{fileName}\'')
 
     # Locate and read the given file.
     folderPath = path.dirname(__file__)
@@ -32,9 +32,14 @@ def readFile(fileName: str) -> Tuple[list, list, int]:
     text = text.replace(' ', '').replace('\n', '')
 
     # Separating the text into its variables.
-    publicKey = text.split('[')[1].split(']')[0].split(',')
-    cipherText = text.split('[')[2].split(']')[0].split(',')
-    relationsAmount = int(text.split('relations:')[1])
+    try:
+        publicKey = text.split('[')[1].split(']')[0].split(',')
+        cipherText = text.split('[')[2].split(']')[0].split(',')
+        relationsAmount = int(text.split('relations:')[1])
+    except:
+        print(f'- Unable to locate all parameters from the file {fileName}.\n'
+              f'  Check for the right formatting.')
+        exit(-1)
 
     return publicKey, cipherText, relationsAmount
 
@@ -45,7 +50,6 @@ def generatePlainText(relationsAmount: int) -> numpy.ndarray:
 
     Args:
         relationsAmount (int): The number of basic elements/special relations.
-        verbose (bool): Whether to print verbose messages.
 
     Returns:
         numpy.ndarray: A 2D numpy array of shape (2 * relationsAmount, relationsAmount) 
@@ -55,7 +59,7 @@ def generatePlainText(relationsAmount: int) -> numpy.ndarray:
     plainTextAmount = 2 * mathPow(relationsAmount, 2)
 
     if verbose:
-        print(f'Generating {round(plainTextAmount)} plain texts')
+        print(f'- Generating {round(plainTextAmount)} plain texts')
 
     plainTextMatrix = numpy.zeros(shape=(1, relationsAmount), 
                                   dtype=numpy.bool_)
@@ -76,7 +80,6 @@ def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray) ->
     Args:
         publicKey (List[str]): A list of strings representing the public key with placeholders for variables.
         plainTextMatrix (numpy.ndarray): A 2D numpy array containing the plain text values.
-        verbose (bool): Whether to print verbose messages.
 
     Returns:
         numpy.ndarray: A 2D numpy array containing the calculated cipher text values.
@@ -86,7 +89,7 @@ def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray) ->
                                    dtype=numpy.bool_)
 
     if verbose:
-        print(f'Calculating {arrayDimensions[0]} corresponding cipher texts')
+        print(f'- Calculating {arrayDimensions[0]} corresponding cipher texts')
 
     # Replace the variables x_n of the public key with the corresponding plain text values to 
     # calculate the cipher text
@@ -106,7 +109,6 @@ def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.nd
     Args:
         plainTextMatrix (numpy.ndarray): A 2D numpy array containing plain text values.
         cipherTextMatrix (numpy.ndarray): A 2D numpy array containing cipher text values.
-        verbose (bool): Whether to print verbose messages.
 
     Returns:
         numpy.ndarray: A 2D numpy array containing the result of logical AND operations between
@@ -117,7 +119,7 @@ def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.nd
                          dtype=numpy.bool_)
 
     if verbose:
-        print('Calculating matrix from plain and cipher text')
+        print('- Calculating matrix from plain and cipher text')
 
     # Logical AND every single column of a plain text row with every column of the cipher text
     for row in range(0, matrixDimension[0]):
@@ -140,7 +142,7 @@ def gaussianElimination(matrix: numpy.ndarray) -> numpy.ndarray:
         numpy.ndarray: A 2D numpy array representing the simplified matrix after Gaussian elimination.
     """
     if verbose:
-        print('Starting gaussian elimination')
+        print('- Starting gaussian elimination')
 
     # Remove every duplicate and False/zero only rows
     matrix = numpy.unique(ar=matrix, 
@@ -192,16 +194,18 @@ def getFreeVariables(matrix: numpy.ndarray) -> List[int]:
         List[int]: A list of integers representing the indices of free variables.
     """
     if verbose:
-        print('Searching for free variables')
+        print('- Searching for free variables')
 
     # Check if the ith column and row is True/one. If not add it to the free variables
     freeVariables = []
+    offset = 0
     for i in range(0, matrix.shape[0]):
-        if matrix[i][i] == False:
+        if matrix[i - offset][i] == False:
             freeVariables.append(i)
+            offset += 1
     
     # Add additional free variables beyond the current matrix row size
-    for i in range(matrix.shape[0], matrix.shape[1]):
+    for i in range(matrix.shape[0] + offset, matrix.shape[1]):
         freeVariables.append(i)
 
     return freeVariables
@@ -219,7 +223,7 @@ def reduceMatrix(matrix: numpy.ndarray, freeVariables: List[int]) -> numpy.ndarr
         numpy.ndarray: A 2D numpy array representing the reduced binary matrix.
     """
     if verbose:
-        print('Reducing matrix')
+        print('- Reducing matrix')
 
     for column in range(1, matrix.shape[1]):
         # If the column is not a free variable and not fully reduced
@@ -253,7 +257,7 @@ def getBaseVectors(matrix: numpy.ndarray, freeVariables: List[int]) -> List[nump
         List[numpy.ndarray]: A list of numpy arrays representing the base vectors.
     """
     if verbose:
-        print('Searching for base vectors')
+        print('- Searching for base vectors')
     
     # Insert extra rows to extract complete vectors
     for variable in freeVariables:
@@ -286,7 +290,7 @@ def calculateRelationsMatrix(baseVectors: List[numpy.ndarray], relationsAmount: 
         numpy.ndarray: A 2D numpy array representing the relations matrix.
     """
     if verbose:
-        print('Calculating relations matrix')
+        print('- Calculating relations matrix')
     
     relationsMatrix = numpy.zeros(shape=[0, relationsAmount], 
                                   dtype=numpy.bool_)
@@ -298,7 +302,7 @@ def calculateRelationsMatrix(baseVectors: List[numpy.ndarray], relationsAmount: 
         for i in range(0, relationsAmount):
             result = False
             for j in range(0, relationsAmount):
-                result ^= numpy.logical_and(cipherTextMatrix[j][:], vector[i * relationsAmount + j])
+                result ^= numpy.logical_and(numpy.array(cipherTextMatrix[j][:], dtype=bool), numpy.array(vector[i * relationsAmount + j], dtype=bool))
             relation[0][i] = result
         relationsMatrix = numpy.vstack((relationsMatrix, relation))
 
@@ -322,13 +326,18 @@ def executePipeline(inputFile: str) -> None:
 
     # Solve the initial matrix
     solvedMatrix = gaussianElimination(matrix)
+    numpy.set_printoptions(threshold=sys.maxsize)
+    print(numpy.array(solvedMatrix, dtype=numpy.intc))
     freeVariables = getFreeVariables(solvedMatrix)
+    print(freeVariables)
     reducedMatrix = reduceMatrix(solvedMatrix, freeVariables)
+    print(numpy.array(reducedMatrix, dtype=numpy.intc))
+    exit()
     baseVectors = getBaseVectors(reducedMatrix, freeVariables)
     relationsMatrix = calculateRelationsMatrix(baseVectors, relationsAmount, cipherText)
 
     # Solve the relations matrix
-    solvedRelationsMatrix = gaussianElimination(relationsMatrix, relationsAmount)
+    solvedRelationsMatrix = gaussianElimination(relationsMatrix)
     freeVariables = getFreeVariables(solvedRelationsMatrix)
     reducedRelationsMatrix = reduceMatrix(solvedRelationsMatrix, freeVariables)
     baseVectors = getBaseVectors(reducedRelationsMatrix, freeVariables)
@@ -341,15 +350,15 @@ def executePipeline(inputFile: str) -> None:
             isCorrect = False
             
     if isCorrect:
-        print(f'Plain text solution:\n{baseVectors}\n\n'
-              f'Solved in :\n{time() - startingTime} seconds')
+        print(f'- Plain text solution:\n{baseVectors}\n\n'
+              f'- Solved in :\n{time() - startingTime} seconds')
     else:
-        print('Decrypting failed')
+        print('- Decrypting failed')
 
 
 if __name__ == '__main__':
     if len(argv) < 3:
-        print('Usage: python main.py \'fileName\' verbose')
+        print('- Usage: python main.py \'fileName\' verbose')
         exit(-1)
     
     verbose = bool(argv[2])
