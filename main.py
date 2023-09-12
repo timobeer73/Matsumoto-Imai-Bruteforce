@@ -1,8 +1,8 @@
 import numpy
 from os import path
 from sys import argv
-from math import pow as mathPow
 from time import time
+from math import pow as mathPow
 from typing import List, Tuple
 
 
