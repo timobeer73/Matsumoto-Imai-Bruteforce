@@ -199,10 +199,13 @@ def getFreeVariables(matrix: numpy.ndarray) -> List[int]:
     # Check if the ith column and row is True/one. If not add it to the free variables
     freeVariables = []
     offset = 0
-    for i in range(0, matrix.shape[0]):
-        if matrix[i - offset][i] == False:
-            freeVariables.append(i)
-            offset += 1
+    for i in range(0, matrix.shape[1]):
+        try:
+            if matrix[i - offset][i] == False:
+                freeVariables.append(i)
+                offset += 1
+        except:
+            break
     
     # Add additional free variables beyond the current matrix row size
     for i in range(matrix.shape[0] + offset, matrix.shape[1]):
@@ -300,10 +303,10 @@ def calculateRelationsMatrix(baseVectors: List[numpy.ndarray], relationsAmount: 
         relation = numpy.zeros(shape=[1, relationsAmount], 
                                dtype=numpy.bool_)
         for i in range(0, relationsAmount):
-            result = False
+            result = 0
             for j in range(0, relationsAmount):
-                result ^= numpy.logical_and(numpy.array(cipherTextMatrix[j][:], dtype=bool), numpy.array(vector[i * relationsAmount + j], dtype=bool))
-            relation[0][i] = result
+                result += int(cipherTextMatrix[j][:]) * int(vector[i * relationsAmount + j])
+            relation[0][i] = result % 2
         relationsMatrix = numpy.vstack((relationsMatrix, relation))
 
     return relationsMatrix
@@ -326,13 +329,8 @@ def executePipeline(inputFile: str) -> None:
 
     # Solve the initial matrix
     solvedMatrix = gaussianElimination(matrix)
-    numpy.set_printoptions(threshold=sys.maxsize)
-    print(numpy.array(solvedMatrix, dtype=numpy.intc))
     freeVariables = getFreeVariables(solvedMatrix)
-    print(freeVariables)
     reducedMatrix = reduceMatrix(solvedMatrix, freeVariables)
-    print(numpy.array(reducedMatrix, dtype=numpy.intc))
-    exit()
     baseVectors = getBaseVectors(reducedMatrix, freeVariables)
     relationsMatrix = calculateRelationsMatrix(baseVectors, relationsAmount, cipherText)
 
@@ -350,8 +348,8 @@ def executePipeline(inputFile: str) -> None:
             isCorrect = False
             
     if isCorrect:
-        print(f'- Plain text solution:\n{baseVectors}\n\n'
-              f'- Solved in :\n{time() - startingTime} seconds')
+        print(f'- Plain text solution: {numpy.array(baseVectors, dtype=numpy.uint8)}\n'
+              f'- Solved in: {time() - startingTime} seconds')
     else:
         print('- Decrypting failed')
 
