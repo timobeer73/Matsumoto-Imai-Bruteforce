@@ -1,9 +1,8 @@
-import math
-import sys
 import numpy
-from time import time
-from tqdm import tqdm
 from os import path
+from sys import argv
+from math import pow as mathPow
+from time import time
 from typing import List, Tuple
 
 
@@ -53,7 +52,7 @@ def generatePlainText(relationsAmount: int) -> numpy.ndarray:
                        containing random plain texts represented by 
                        binary values.
     """
-    plainTextAmount = 2 * math.pow(relationsAmount, 2)
+    plainTextAmount = 2 * mathPow(relationsAmount, 2)
 
     if verbose:
         print(f'Generating {round(plainTextAmount)} plain texts')
@@ -349,11 +348,11 @@ def executePipeline(inputFile: str) -> None:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
+    if len(argv) < 3:
         print('Usage: python main.py \'fileName\' verbose')
         exit(-1)
     
-    verbose = bool(sys.argv[2])
-    fileName = sys.argv[1]
+    verbose = bool(argv[2])
+    fileName = argv[1]
 
     executePipeline(fileName)
