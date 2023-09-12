@@ -182,26 +182,28 @@ def gaussianElimination(matrix: numpy.ndarray) -> numpy.ndarray:
     return solvedMatrix
 
 
-# get every free variable of a matrix
-def getFreeVariables(solvedMatrix: numpy):
+def getFreeVariables(matrix: numpy.ndarray) -> List[int]:
+    """
+    Find and return the indices of free variables in the solved binary matrix.
+
+    Args:
+        matrix (numpy.ndarray): A 2D numpy array representing the simplified matrix after Gaussian elimination.
+
+    Returns:
+        List[int]: A list of integers representing the indices of free variables.
+    """
+    if verbose:
+        print('Searching for free variables')
+
+    # Check if the ith column and row is True/one. If not add it to the free variables
     freeVariablesArray = []
-    matrixDimension = solvedMatrix.shape
-
-    if verbose:
-        print(f'start:\tchecking for free variables')
-
-    print(solvedMatrix)
-
-    # check if column and row is '1', otherwise it's a free variable
-    for i in range(0, matrixDimension[0]):
-        if solvedMatrix[i][i] != 1:
+    for i in range(0, matrix.shape[0]):
+        if matrix[i][i] == False:
             freeVariablesArray.append(i + 1)
-    # check for additional at the bottom of the matrix
-    for i in range(matrixDimension[0], matrixDimension[1]):
+    
+    # Add additional free variables beyond the current matrix row size
+    for i in range(matrix.shape[0], matrix.shape[1]):
         freeVariablesArray.append(i + 1)
-
-    if verbose:
-        print(f'end:\tfree variables found\n')
 
     return freeVariablesArray
 
