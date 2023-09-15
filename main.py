@@ -1,5 +1,4 @@
 import numpy
-from os import path
 from sys import argv
 from time import time
 from math import pow as mathPow
