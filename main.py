@@ -1,18 +1,18 @@
 import numpy
 from os import path
-import sys
 from sys import argv
 from time import time
 from math import pow as mathPow
 from typing import List, Tuple
+from datetime import datetime
 
 
-def readFile(fileName: str) -> Tuple[list, list, int]:
+def readFile(filePath: str) -> Tuple[List[str], List[str], int]:
     """
     Read and process an input file into 3 variables.
 
     Args:
-        fileName (str): The name of the file to be read.
+        filePath (str): The path of the file to be read.
 
     Returns:
         Tuple[list, list, int]: A tuple containing the public key (list), 
@@ -20,11 +20,9 @@ def readFile(fileName: str) -> Tuple[list, list, int]:
                                 from the file.
     """
     if verbose:
-        print(f'- Processing file \'{fileName}\'')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Processing file \'{filePath}\'')
 
-    # Locate and read the given file.
-    folderPath = path.dirname(__file__)
-    filePath = path.join(folderPath, fileName)
+    # Read the given file.
     with open(filePath, 'r') as file:
         text = file.read()
 
@@ -37,7 +35,7 @@ def readFile(fileName: str) -> Tuple[list, list, int]:
         cipherText = text.split('[')[2].split(']')[0].split(',')
         relationsAmount = int(text.split('relations:')[1])
     except:
-        print(f'- Unable to locate all parameters from the file {fileName}.\n'
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Unable to locate all parameters from the file {filePath}.\n'
               f'  Check for the right formatting.')
         exit(-1)
 
@@ -59,7 +57,7 @@ def generatePlainText(relationsAmount: int) -> numpy.ndarray:
     plainTextAmount = 2 * mathPow(relationsAmount, 2)
 
     if verbose:
-        print(f'- Generating {round(plainTextAmount)} plain texts')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Generating {round(plainTextAmount)} plain texts')
 
     plainTextMatrix = numpy.zeros(shape=(1, relationsAmount), 
                                   dtype=numpy.bool_)
@@ -75,24 +73,23 @@ def generatePlainText(relationsAmount: int) -> numpy.ndarray:
 
 def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray) -> numpy.ndarray:
     """
-    Calculate the corresponding cipher texts using the public key and plain text array.
+    Calculate cipher texts using the public key and plain text matrix.
 
     Args:
-        publicKey (List[str]): A list of strings representing the public key with placeholders for variables.
-        plainTextMatrix (numpy.ndarray): A 2D numpy array containing the plain text values.
+        publicKey (List[str]): List of strings representing the public key with variable placeholders.
+        plainTextMatrix (numpy.ndarray): 2D numpy array containing plain text values.
 
     Returns:
-        numpy.ndarray: A 2D numpy array containing the calculated cipher text values.
+        numpy.ndarray: 2D numpy array containing calculated cipher text values.
     """
     arrayDimensions = plainTextMatrix.shape
     cipherTextMatrix = numpy.zeros(shape=arrayDimensions, 
                                    dtype=numpy.bool_)
 
     if verbose:
-        print(f'- Calculating {arrayDimensions[0]} corresponding cipher texts')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating {arrayDimensions[0]} corresponding cipher texts')
 
-    # Replace the variables x_n of the public key with the corresponding plain text values to 
-    # calculate the cipher text
+    # Replace the variables x_n of the public key with the corresponding plain text values to calculate the cipher text
     for row in range(0, arrayDimensions[0]):
         for column, publicKeyRow in enumerate(publicKey):
             for variable in reversed(range(0, arrayDimensions[1])):
@@ -119,7 +116,7 @@ def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.nd
                          dtype=numpy.bool_)
 
     if verbose:
-        print('- Calculating matrix from plain and cipher text')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating matrix from plain and cipher text')
 
     # Logical AND every single column of a plain text row with every column of the cipher text
     for row in range(0, matrixDimension[0]):
@@ -142,7 +139,7 @@ def gaussianElimination(matrix: numpy.ndarray) -> numpy.ndarray:
         numpy.ndarray: A 2D numpy array representing the simplified matrix after Gaussian elimination.
     """
     if verbose:
-        print('- Starting gaussian elimination')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Starting gaussian elimination')
 
     # Remove every duplicate and False/zero only rows
     matrix = numpy.unique(ar=matrix, 
@@ -194,7 +191,7 @@ def getFreeVariables(matrix: numpy.ndarray) -> List[int]:
         List[int]: A list of integers representing the indices of free variables.
     """
     if verbose:
-        print('- Searching for free variables')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Searching for free variables')
 
     # Check if the ith column and row is True/one. If not add it to the free variables
     freeVariables = []
@@ -226,7 +223,7 @@ def reduceMatrix(matrix: numpy.ndarray, freeVariables: List[int]) -> numpy.ndarr
         numpy.ndarray: A 2D numpy array representing the reduced binary matrix.
     """
     if verbose:
-        print('- Reducing matrix')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Reducing matrix')
 
     for column in range(1, matrix.shape[1]):
         # If the column is not a free variable and not fully reduced
@@ -260,7 +257,7 @@ def getBaseVectors(matrix: numpy.ndarray, freeVariables: List[int]) -> List[nump
         List[numpy.ndarray]: A list of numpy arrays representing the base vectors.
     """
     if verbose:
-        print('- Searching for base vectors')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Searching for base vectors')
     
     # Insert extra rows to extract complete vectors
     for variable in freeVariables:
@@ -293,7 +290,7 @@ def calculateRelationsMatrix(baseVectors: List[numpy.ndarray], relationsAmount: 
         numpy.ndarray: A 2D numpy array representing the relations matrix.
     """
     if verbose:
-        print('- Calculating relations matrix')
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating relations matrix')
     
     relationsMatrix = numpy.zeros(shape=[0, relationsAmount], 
                                   dtype=numpy.bool_)
@@ -312,17 +309,45 @@ def calculateRelationsMatrix(baseVectors: List[numpy.ndarray], relationsAmount: 
     return relationsMatrix
 
 
-def executePipeline(inputFile: str) -> None:
+def verifyResult(publicKey: List[str], baseVectors: List[numpy.ndarray], cipherText: List[str]) -> bool:
+    """
+    Verify the correctness of the solution by calculating the cipher text from the plain text solution and
+    matching it to the cipher text from the source file.
+
+    Args:
+        publicKey (List[str]): A list of strings representing the public key with placeholders for variables.
+        baseVectors (List[numpy.ndarray]): A list of numpy arrays representing the base vectors.
+        cipherText (List[str]): A list of strings representing the cipher text.
+
+    Returns:
+        bool: True if the calculated cipher text matches the provided cipher text, False otherwise.
+    """
+    if verbose:
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Verifying the result')
+    
+    # Calculate the cipher text with the plain text solution (baseVectors)
+    result = calculateCipherText(publicKey, numpy.array(baseVectors))
+    
+    # Match the cipher text solution with the cipher text from the *.txt file
+    isCorrect = True
+    for i in range(0, result.shape[1]):
+        if int(result[0][i]) != int(cipherText[i]):
+            isCorrect = False
+            
+    return isCorrect
+
+
+def executePipeline(filePath: str) -> None:
     """
     Execute a pipeline to solve the cryptographic problem using various matrix operations.
 
     Args:
-        inputFile (str): The name of the input file containing the parameters.
+        inputFile (str): The path of the input file containing the parameters.
     """
     startingTime = time()
 
     # Read the parameters from a formatted *.txt file and calculate a matrix to solve
-    publicKey, cipherText, relationsAmount = readFile(inputFile)
+    publicKey, cipherText, relationsAmount = readFile(filePath)
     plainTextArray = generatePlainText(relationsAmount)
     cipherTextsArray = calculateCipherText(publicKey, plainTextArray)
     matrix = calculatingMatrix(plainTextArray, cipherTextsArray)
@@ -341,25 +366,24 @@ def executePipeline(inputFile: str) -> None:
     baseVectors = getBaseVectors(reducedRelationsMatrix, freeVariables)
 
     # Verify the result to insure that the calculation was right
-    cipherTextResult = calculateCipherText(publicKey, numpy.array(baseVectors))
-    isCorrect = True
-    for i in range(0, cipherTextResult.shape[1]):
-        if int(cipherTextResult[0][i]) != int(cipherText[i]):
-            isCorrect = False
-            
+    isCorrect = verifyResult(publicKey, baseVectors, cipherText)
+    
+    currentTime = datetime.now().strftime("%H:%M:%S")  
     if isCorrect:
-        print(f'- Plain text solution: {numpy.array(baseVectors, dtype=numpy.uint8)}\n'
-              f'- Solved in: {time() - startingTime} seconds')
+        print(f'[{currentTime}] Plain text solution: {numpy.array(baseVectors, dtype=numpy.uint8)}\n'
+              f'[{currentTime}] Solved in: {round((time() - startingTime), 2)} seconds')
     else:
-        print('- Decrypting failed')
+        print(f'[{currentTime}] Decryption failed')
 
 
 if __name__ == '__main__':
     if len(argv) < 3:
-        print('- Usage: python main.py \'fileName\' verbose')
+        print('Usage: python main.py \'filePath\' verbose\n'
+              '       - filePath: Full path of the text file\n'
+              '       - verbose:  0 or 1 to print extra information')
         exit(-1)
     
     verbose = bool(argv[2])
-    fileName = argv[1]
+    filePath = argv[1]
 
-    executePipeline(fileName)
+    executePipeline(filePath)
