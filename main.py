@@ -1,9 +1,9 @@
 import numpy
-from sys import argv
 from time import time
 from math import pow as mathPow
 from typing import List, Tuple
 from datetime import datetime
+from argparse import ArgumentParser
 
 
 def readFile(filePath: str) -> Tuple[List[str], List[str], int]:
@@ -32,10 +32,10 @@ def readFile(filePath: str) -> Tuple[List[str], List[str], int]:
     try:
         publicKey = text.split('[')[1].split(']')[0].split(',')
         cipherText = text.split('[')[2].split(']')[0].split(',')
-        relationsAmount = int(text.split('relations:')[1])
+        relationsAmount = len(cipherText)
     except:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Unable to locate all parameters from the file {filePath}.\n'
-              f'  Check for the right formatting.')
+              f'\t   Check for the right formatting.')
         exit(-1)
 
     return publicKey, cipherText, relationsAmount
@@ -369,20 +369,25 @@ def executePipeline(filePath: str) -> None:
     
     currentTime = datetime.now().strftime("%H:%M:%S")  
     if isCorrect:
-        print(f'[{currentTime}] Plain text solution: {numpy.array(baseVectors, dtype=numpy.uint8)}\n'
-              f'[{currentTime}] Solved in: {round((time() - startingTime), 2)} seconds')
+        print(f'[{currentTime}] Plain text solution: {numpy.array(baseVectors, dtype=numpy.uint8)}\n')
+        if verbose:
+              print(f'[{currentTime}] Solved in: {round((time() - startingTime), 2)} seconds')
     else:
         print(f'[{currentTime}] Decryption failed')
 
 
-if __name__ == '__main__':
-    if len(argv) < 3:
-        print('Usage: python main.py \'filePath\' verbose\n'
-              '       - filePath: Full path of the text file\n'
-              '       - verbose:  0 or 1 to print extra information')
-        exit(-1)
+if __name__ == '__main__':   
+    parser = ArgumentParser(description='Decrypt a ciphertext of an Matsumoto-Imai-Encryption based on the given public key.')
+    parser.add_argument('filepath', 
+                        type=str, 
+                        help='Path of the formatted file.')
+    parser.add_argument('-v', '--verbose', 
+                        action='store_true', 
+                        help='Print additional information.')
+    args = parser.parse_args()
     
-    verbose = bool(argv[2])
-    filePath = argv[1]
+    verbose = False
+    if args.verbose:
+        verbose = True
 
-    executePipeline(filePath)
+    executePipeline(args.filepath)
