@@ -3,26 +3,23 @@ from time import time
 from math import pow as mathPow
 from typing import List, Tuple
 from datetime import datetime
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 
 
-def readFile(filePath: str) -> Tuple[List[str], List[str], int]:
+def readFile(args: Namespace) -> Tuple[List[str], List[str], int]:
     """
     Read and process an input file into 3 variables.
-
-    Args:
-        filePath (str): The path of the file to be read.
 
     Returns:
         Tuple[list, list, int]: A tuple containing the public key (list), 
                                 cipher text (list), and relationsAmount (int) extracted 
                                 from the file.
     """
-    if verbose:
-        print(f'[{datetime.now().strftime("%H:%M:%S")}] Processing file \'{filePath}\'')
+    if args.verbose:
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Processing file \'{args.filepath}\'')
 
     # Read the given file.
-    with open(filePath, 'r') as file:
+    with open(args.filepath, 'r') as file:
         text = file.read()
 
     # Remove blank spaces and linebreaks for easier processing.
@@ -34,14 +31,14 @@ def readFile(filePath: str) -> Tuple[List[str], List[str], int]:
         cipherText = text.split('[')[2].split(']')[0].split(',')
         relationsAmount = len(cipherText)
     except:
-        print(f'[{datetime.now().strftime("%H:%M:%S")}] Unable to locate all parameters from the file {filePath}.\n'
+        print(f'[{datetime.now().strftime("%H:%M:%S")}] Unable to locate all parameters from the file {args.filepath}.\n'
               f'\t   Check for the right formatting.')
         exit(-1)
 
     return publicKey, cipherText, relationsAmount
 
 
-def generatePlainText(relationsAmount: int) -> numpy.ndarray:
+def generatePlainText(args: Namespace, relationsAmount: int) -> numpy.ndarray:
     """
     Generate a 2D numpy array of random plain texts.
 
@@ -55,7 +52,7 @@ def generatePlainText(relationsAmount: int) -> numpy.ndarray:
     """
     plainTextAmount = 2 * mathPow(relationsAmount, 2)
 
-    if verbose:
+    if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Generating {round(plainTextAmount)} plain texts')
 
     plainTextMatrix = numpy.zeros(shape=(1, relationsAmount), 
@@ -70,7 +67,7 @@ def generatePlainText(relationsAmount: int) -> numpy.ndarray:
     return plainTextMatrix
 
 
-def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray) -> numpy.ndarray:
+def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: numpy.ndarray) -> numpy.ndarray:
     """
     Calculate cipher texts using the public key and plain text matrix.
 
@@ -85,7 +82,7 @@ def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray) ->
     cipherTextMatrix = numpy.zeros(shape=arrayDimensions, 
                                    dtype=numpy.bool_)
 
-    if verbose:
+    if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating {arrayDimensions[0]} corresponding cipher texts')
 
     # Replace the variables x_n of the public key with the corresponding plain text values to calculate the cipher text
@@ -98,7 +95,7 @@ def calculateCipherText(publicKey: List[str], plainTextMatrix: numpy.ndarray) ->
     return cipherTextMatrix
 
 
-def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.ndarray) -> numpy.ndarray:
+def calculateMatrix(args: Namespace, plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.ndarray) -> numpy.ndarray:
     """
     Calculate a matrix by performing logical AND operations between plain text and cipher text matrices.
 
@@ -114,7 +111,7 @@ def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.nd
     matrix = numpy.zeros(shape=matrixDimension, 
                          dtype=numpy.bool_)
 
-    if verbose:
+    if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating matrix from plain and cipher text')
 
     # Logical AND every single column of a plain text row with every column of the cipher text
@@ -127,7 +124,7 @@ def calculatingMatrix(plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.nd
     return matrix
 
 
-def gaussianElimination(matrix: numpy.ndarray) -> numpy.ndarray:
+def gaussianElimination(args: Namespace, matrix: numpy.ndarray) -> numpy.ndarray:
     """
     Perform Gaussian elimination on a binary matrix to simplify and solve the system of equations.
 
@@ -137,7 +134,7 @@ def gaussianElimination(matrix: numpy.ndarray) -> numpy.ndarray:
     Returns:
         numpy.ndarray: A 2D numpy array representing the simplified matrix after Gaussian elimination.
     """
-    if verbose:
+    if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Starting gaussian elimination')
 
     # Remove every duplicate and False/zero only rows
@@ -179,7 +176,7 @@ def gaussianElimination(matrix: numpy.ndarray) -> numpy.ndarray:
     return solvedMatrix
 
 
-def getFreeVariables(matrix: numpy.ndarray) -> List[int]:
+def getFreeVariables(args: Namespace, matrix: numpy.ndarray) -> List[int]:
     """
     Find and return the indices of free variables in the solved binary matrix.
 
@@ -189,7 +186,7 @@ def getFreeVariables(matrix: numpy.ndarray) -> List[int]:
     Returns:
         List[int]: A list of integers representing the indices of free variables.
     """
-    if verbose:
+    if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Searching for free variables')
 
     # Check if the ith column and row is True/one. If not add it to the free variables
@@ -210,7 +207,7 @@ def getFreeVariables(matrix: numpy.ndarray) -> List[int]:
     return freeVariables
 
 
-def reduceMatrix(matrix: numpy.ndarray, freeVariables: List[int]) -> numpy.ndarray:
+def reduceMatrix(args: Namespace, matrix: numpy.ndarray, freeVariables: List[int]) -> numpy.ndarray:
     """
     Reduce a binary matrix by performing additional operations based on free variables.
 
@@ -221,7 +218,7 @@ def reduceMatrix(matrix: numpy.ndarray, freeVariables: List[int]) -> numpy.ndarr
     Returns:
         numpy.ndarray: A 2D numpy array representing the reduced binary matrix.
     """
-    if verbose:
+    if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Reducing matrix')
 
     for column in range(1, matrix.shape[1]):
@@ -244,7 +241,7 @@ def reduceMatrix(matrix: numpy.ndarray, freeVariables: List[int]) -> numpy.ndarr
     return matrix
 
 
-def getBaseVectors(matrix: numpy.ndarray, freeVariables: List[int]) -> List[numpy.ndarray]:
+def getBaseVectors(args: Namespace, matrix: numpy.ndarray, freeVariables: List[int]) -> List[numpy.ndarray]:
     """
     Find and return the base vectors from a binary matrix based on free variables.
 
@@ -255,7 +252,7 @@ def getBaseVectors(matrix: numpy.ndarray, freeVariables: List[int]) -> List[nump
     Returns:
         List[numpy.ndarray]: A list of numpy arrays representing the base vectors.
     """
-    if verbose:
+    if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Searching for base vectors')
     
     # Insert extra rows to extract complete vectors
@@ -276,39 +273,66 @@ def getBaseVectors(matrix: numpy.ndarray, freeVariables: List[int]) -> List[nump
     return baseVectors
 
 
-def calculateRelationsMatrix(baseVectors: List[numpy.ndarray], relationsAmount: int, cipherTextMatrix: numpy.ndarray) -> numpy.ndarray:
+def calculateRelationsMatrix(args: Namespace, baseVectors: List[numpy.ndarray], relationsAmount: int, cipherText: List[str]) -> numpy.ndarray:
     """
     Calculate a relations matrix based on base vectors and a cipher text matrix.
 
     Args:
         baseVectors (List[numpy.ndarray]): A list of numpy arrays representing base vectors.
         relationsAmount (int): The number of relations to calculate.
-        cipherTextMatrix (numpy.ndarray): A 2D numpy array representing a cipher text matrix.
+        cipherText (List[str]): An array representing a cipher text.
 
     Returns:
         numpy.ndarray: A 2D numpy array representing the relations matrix.
     """
-    if verbose:
+    if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating relations matrix')
     
     relationsMatrix = numpy.zeros(shape=[0, relationsAmount], 
                                   dtype=numpy.bool_)
 
-    # Logical AND every cipherText (of size 'relationsAmount') with 'relationsAmount' values of the vector
+    # Logical AND every position of the ciphertext with 'relationsAmount'-large parts of the base vectors
     for vector in baseVectors:
         relation = numpy.zeros(shape=[1, relationsAmount], 
                                dtype=numpy.bool_)
         for i in range(0, relationsAmount):
             result = 0
             for j in range(0, relationsAmount):
-                result += int(cipherTextMatrix[j][:]) * int(vector[i * relationsAmount + j])
+                result += int(cipherText[i]) * int(vector[i * relationsAmount + j])
             relation[0][i] = result % 2
         relationsMatrix = numpy.vstack((relationsMatrix, relation))
+    return relationsMatrix
+
+
+def calculateInitialMatrix(args: Namespace) -> Tuple[List[str], List[str], int, numpy.ndarray]:
+    publicKey, cipherText, relationsAmount = readFile(args)
+    plainTextArray = generatePlainText(args, relationsAmount)
+    cipherTextsArray = calculateCipherText(args, publicKey, plainTextArray)
+    matrix = calculateMatrix(args, plainTextArray, cipherTextsArray)
+    
+    return publicKey, cipherText, relationsAmount, matrix
+    
+
+def solveInitialMatrix(args: Namespace, matrix: numpy.ndarray, relationsAmount: int, cipherText: List[str]) -> numpy.ndarray:
+    solvedMatrix = gaussianElimination(args, matrix)
+    freeVariables = getFreeVariables(args, solvedMatrix)
+    reducedMatrix = reduceMatrix(args, solvedMatrix, freeVariables)
+    baseVectors = getBaseVectors(args, reducedMatrix, freeVariables)
+    relationsMatrix = calculateRelationsMatrix(args, baseVectors, relationsAmount, cipherText)
 
     return relationsMatrix
 
 
-def verifyResult(publicKey: List[str], baseVectors: List[numpy.ndarray], cipherText: List[str]) -> bool:
+def solveRelationsMatrix(args: Namespace, relationsMatrix: numpy.ndarray) -> List[numpy.ndarray]:
+    solvedMatrix = gaussianElimination(args, relationsMatrix)
+    freeVariables = getFreeVariables(args, solvedMatrix)
+    reducedMatrix = reduceMatrix(args, solvedMatrix, freeVariables)
+    baseVectors = getBaseVectors(args, reducedMatrix, freeVariables)
+    
+    return baseVectors
+    
+
+def verifyResult(args: Namespace, publicKey: List[str], baseVectors: List[numpy.ndarray], cipherText: List[str]) -> bool:
     """
     Verify the correctness of the solution by calculating the cipher text from the plain text solution and
     matching it to the cipher text from the source file.
@@ -321,11 +345,11 @@ def verifyResult(publicKey: List[str], baseVectors: List[numpy.ndarray], cipherT
     Returns:
         bool: True if the calculated cipher text matches the provided cipher text, False otherwise.
     """
-    if verbose:
+    if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Verifying the result')
     
     # Calculate the cipher text with the plain text solution (baseVectors)
-    result = calculateCipherText(publicKey, numpy.array(baseVectors))
+    result = calculateCipherText(args, publicKey, numpy.array(baseVectors))
     
     # Match the cipher text solution with the cipher text from the *.txt file
     isCorrect = True
@@ -336,47 +360,30 @@ def verifyResult(publicKey: List[str], baseVectors: List[numpy.ndarray], cipherT
     return isCorrect
 
 
-def executePipeline(filePath: str) -> None:
+def executePipeline(args: Namespace) -> None:
     """
     Execute a pipeline to solve the cryptographic problem using various matrix operations.
-
-    Args:
-        inputFile (str): The path of the input file containing the parameters.
     """
     startingTime = time()
 
-    # Read the parameters from a formatted *.txt file and calculate a matrix to solve
-    publicKey, cipherText, relationsAmount = readFile(filePath)
-    plainTextArray = generatePlainText(relationsAmount)
-    cipherTextsArray = calculateCipherText(publicKey, plainTextArray)
-    matrix = calculatingMatrix(plainTextArray, cipherTextsArray)
-
-    # Solve the initial matrix
-    solvedMatrix = gaussianElimination(matrix)
-    freeVariables = getFreeVariables(solvedMatrix)
-    reducedMatrix = reduceMatrix(solvedMatrix, freeVariables)
-    baseVectors = getBaseVectors(reducedMatrix, freeVariables)
-    relationsMatrix = calculateRelationsMatrix(baseVectors, relationsAmount, cipherText)
-
-    # Solve the relations matrix
-    solvedRelationsMatrix = gaussianElimination(relationsMatrix)
-    freeVariables = getFreeVariables(solvedRelationsMatrix)
-    reducedRelationsMatrix = reduceMatrix(solvedRelationsMatrix, freeVariables)
-    baseVectors = getBaseVectors(reducedRelationsMatrix, freeVariables)
+    # Execute the pipeline
+    publicKey, cipherText, relationsAmount, matrix = calculateInitialMatrix(args)
+    relationsMatrix = solveInitialMatrix(args, matrix, relationsAmount, cipherText)
+    baseVectors = solveRelationsMatrix(args, relationsMatrix)
 
     # Verify the result to insure that the calculation was right
-    isCorrect = verifyResult(publicKey, baseVectors, cipherText)
+    isCorrect = verifyResult(args, publicKey, baseVectors, cipherText)
     
     currentTime = datetime.now().strftime("%H:%M:%S")  
     if isCorrect:
         print(f'[{currentTime}] Plain text solution: {numpy.array(baseVectors, dtype=numpy.uint8)}\n')
-        if verbose:
+        if args.verbose:
               print(f'[{currentTime}] Solved in: {round((time() - startingTime), 2)} seconds')
     else:
         print(f'[{currentTime}] Decryption failed')
-
-
-if __name__ == '__main__':   
+        
+        
+def setupArgumentParser() -> Namespace:
     parser = ArgumentParser(description='Decrypt a ciphertext of an Matsumoto-Imai-Encryption based on the given public key.')
     parser.add_argument('filepath', 
                         type=str, 
@@ -384,10 +391,10 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', 
                         action='store_true', 
                         help='Print additional information.')
-    args = parser.parse_args()
     
-    verbose = False
-    if args.verbose:
-        verbose = True
+    return parser.parse_args()
 
-    executePipeline(args.filepath)
+
+if __name__ == '__main__':
+    args = setupArgumentParser()
+    executePipeline(args)
