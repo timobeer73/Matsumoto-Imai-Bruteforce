@@ -48,3 +48,18 @@ unsolvedMatrix = numpy.array([[True,  False, True,  False, True ],
 solvedMatrix = numpy.array([[True,  True,  True,  True,  True ],
                             [False, True,  False, True,  False],
                             [False, False, True,  False, False]])
+unreducedMatrix = numpy.array([[True,  False, False, True,  False, False, False, False, False], 
+                               [False, True,  True,  False, False, False, False, True,  True ], 
+                               [False, False, True,  False, False, False, False, False, False], 
+                               [False, False, False, True,  False, False, True,  False, False], 
+                               [False, False, False, False, True,  True,  False, False, False], 
+                               [False, False, False, False, False, False, False, True,  False]])
+reducedMatrix = numpy.array([[True,  False, False, False, False, False, True,  False, False], 
+                             [False, True,  False, False, False, False, False, False, True ], 
+                             [False, False, True,  False, False, False, False, False, False], 
+                             [False, False, False, True,  False, False, True,  False, False], 
+                             [False, False, False, False, True,  True,  False, False, False], 
+                             [False, False, False, False, False, False, False, True,  False]])
+correspondingBaseVectors = [numpy.array([False, True,  False, False, False, False, False, False, True ]), 
+                            numpy.array([True,  False, False, True , False, False, True , False, False]), 
+                            numpy.array([False, False, False, False, True,  True,  False, False, False])]

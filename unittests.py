@@ -15,12 +15,12 @@ class TestSumArray(unittest.TestCase):
                       main.readFile(v.args))
 
 
-    def testReadFileRelationsAmount(self):
+    def testReadFileRelations(self):
         self.assertIn(v.relationsAmount, 
                       main.readFile(v.args))
         
         
-    def testGeneratePlaintextLength(self):
+    def testGeneratePlaintext(self):
         expectedLength = 2 * pow(v.relationsAmount, 2)
         self.assertEqual(expectedLength, 
                          len(main.generatePlainText(v.args, 
@@ -50,6 +50,20 @@ class TestSumArray(unittest.TestCase):
     def testGetFreeVariables(self):
         self.assertEqual([3, 4], 
                          main.getFreeVariables(v.args, v.solvedMatrix))
+        
+        
+    def testReduceMatrix(self):
+        self.assertTrue(numpy.array_equal(v.reducedMatrix, 
+                        main.reduceMatrix(v.args, 
+                                          v.unreducedMatrix, 
+                                          [5, 6, 8])))
+        
+    
+    def testGetBaseVectors(self):
+        self.assertTrue(numpy.array_equal(v.correspondingBaseVectors, 
+                        main.getBaseVectors(v.args, 
+                                            v.reducedMatrix, 
+                                            [5, 6, 8])))
         
 
 if __name__ == '__main__':
