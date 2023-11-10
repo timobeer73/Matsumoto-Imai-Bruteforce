@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 from time import time
 from math import pow as mathPow
 from typing import List, Tuple
@@ -38,7 +38,7 @@ def readFile(args: Namespace) -> Tuple[List[str], List[str], int]:
     return publicKey, cipherText, relationsAmount
 
 
-def generatePlainText(args: Namespace, relationsAmount: int) -> numpy.ndarray:
+def generatePlainText(args: Namespace, relationsAmount: int) -> np.ndarray:
     """
     Generate a 2D numpy array of random plain texts.
 
@@ -55,19 +55,19 @@ def generatePlainText(args: Namespace, relationsAmount: int) -> numpy.ndarray:
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Generating {round(plainTextAmount)} plain texts')
 
-    plainTextMatrix = numpy.zeros(shape=(1, relationsAmount), 
-                                  dtype=numpy.bool_)
+    plainTextMatrix = np.zeros(shape=(1, relationsAmount), 
+                               dtype=np.bool_)
 
     # Generate random plain texts until 2 * relationsAmount² rows were generated.
     while plainTextMatrix.shape[0] < plainTextAmount:
-        plainTextMatrix = numpy.vstack((plainTextMatrix, 
-                                        numpy.random.choice(a=numpy.array([True, False]), 
-                                                            size=(1, relationsAmount))))
+        plainTextMatrix = np.vstack((plainTextMatrix, 
+                                     np.random.choice(a=np.array([True, False]), 
+                                                      size=(1, relationsAmount))))
 
     return plainTextMatrix
 
 
-def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: numpy.ndarray) -> numpy.ndarray:
+def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: np.ndarray) -> np.ndarray:
     """
     Calculate cipher texts using the public key and plain text matrix.
 
@@ -79,8 +79,8 @@ def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: 
         numpy.ndarray: 2D numpy array containing calculated cipher text values.
     """
     arrayDimensions = plainTextMatrix.shape
-    cipherTextMatrix = numpy.zeros(shape=arrayDimensions, 
-                                   dtype=numpy.bool_)
+    cipherTextMatrix = np.zeros(shape=arrayDimensions, 
+                                dtype=np.bool_)
 
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating {arrayDimensions[0]} corresponding cipher texts')
@@ -95,7 +95,7 @@ def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: 
     return cipherTextMatrix
 
 
-def calculateMatrix(args: Namespace, plainTextMatrix: numpy.ndarray, cipherTextMatrix: numpy.ndarray) -> numpy.ndarray:
+def calculateMatrix(args: Namespace, plainTextMatrix: np.ndarray, cipherTextMatrix: np.ndarray) -> np.ndarray:
     """
     Calculate a matrix by performing logical AND operations between plain text and cipher text matrices.
 
@@ -108,8 +108,8 @@ def calculateMatrix(args: Namespace, plainTextMatrix: numpy.ndarray, cipherTextM
                        corresponding elements of the input matrices.
     """
     matrixDimension = plainTextMatrix.shape[0], plainTextMatrix.shape[1] * cipherTextMatrix.shape[1]
-    matrix = numpy.zeros(shape=matrixDimension, 
-                         dtype=numpy.bool_)
+    matrix = np.zeros(shape=matrixDimension, 
+                      dtype=np.bool_)
 
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating matrix from plain and cipher text')
@@ -124,7 +124,7 @@ def calculateMatrix(args: Namespace, plainTextMatrix: numpy.ndarray, cipherTextM
     return matrix
 
 
-def gaussianElimination(args: Namespace, matrix: numpy.ndarray) -> numpy.ndarray:
+def gaussianElimination(args: Namespace, matrix: np.ndarray) -> np.ndarray:
     """
     Perform Gaussian elimination on a binary matrix to simplify and solve the system of equations.
 
@@ -137,25 +137,25 @@ def gaussianElimination(args: Namespace, matrix: numpy.ndarray) -> numpy.ndarray
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Starting gaussian elimination')
     
-    solvedMatrix = numpy.zeros(shape=[0, matrix.shape[1]], 
-                               dtype=numpy.bool_)
+    solvedMatrix = np.zeros(shape=[0, matrix.shape[1]], 
+                            dtype=np.bool_)
     for columnIndex in range(0, matrix.shape[1]):
         # Remove every duplicate and False/zero only rows
-        matrix = numpy.unique(ar=matrix, 
-                              axis=0)
-        matrix = matrix[~numpy.all(matrix == False, 
-                                   axis=1)]
+        matrix = np.unique(ar=matrix, 
+                           axis=0)
+        matrix = matrix[~np.all(matrix == False, 
+                                axis=1)]
         
         if matrix.shape[0] > 1:
             # Move all rows with a True/one in the nth column to the top of the matrix
-            matrix = numpy.flipud(matrix[matrix[:, columnIndex].argsort()])
+            matrix = np.flipud(matrix[matrix[:, columnIndex].argsort()])
 
             # Move the row with the XXX amount of Trues/ones to the top
             optimalRowSum = 0
             optimalRowIndex = 0
             for rowIndex, row in enumerate(matrix):
                 if row[columnIndex] == True:
-                    rowSum = numpy.count_nonzero(row)
+                    rowSum = np.count_nonzero(row)
                     if rowSum > optimalRowSum:
                         optimalRowSum = rowSum
                         optimalRowIndex = rowIndex
@@ -168,7 +168,7 @@ def gaussianElimination(args: Namespace, matrix: numpy.ndarray) -> numpy.ndarray
             if matrix[0][columnIndex] == True:
                 for rowIndex in range(1, matrix.shape[0]):
                     if matrix[rowIndex][columnIndex] == True:
-                        matrix[rowIndex][:] = numpy.logical_xor(matrix[0][:], matrix[rowIndex][:])
+                        matrix[rowIndex][:] = np.logical_xor(matrix[0][:], matrix[rowIndex][:])
                     else:
                         break
             else:
@@ -176,17 +176,17 @@ def gaussianElimination(args: Namespace, matrix: numpy.ndarray) -> numpy.ndarray
         
         if matrix.shape[0] > 0:  
             # Store the current pivot row in the output matrix and delete the same row in the input matrix
-            solvedMatrix = numpy.vstack([solvedMatrix, matrix[0][:]])
-            matrix = numpy.delete(arr=matrix, 
-                                  obj=0, 
-                                  axis=0)
+            solvedMatrix = np.vstack([solvedMatrix, matrix[0][:]])
+            matrix = np.delete(arr=matrix, 
+                               obj=0, 
+                               axis=0)
         else:
             break
         
     return solvedMatrix
 
 
-def getFreeVariables(args: Namespace, matrix: numpy.ndarray) -> List[int]:
+def getFreeVariables(args: Namespace, matrix: np.ndarray) -> List[int]:
     """
     Find and return the indices of free variables in the solved binary matrix.
 
@@ -217,7 +217,7 @@ def getFreeVariables(args: Namespace, matrix: numpy.ndarray) -> List[int]:
     return freeVariables
 
 
-def reduceMatrix(args: Namespace, matrix: numpy.ndarray, freeVariables: List[int]) -> numpy.ndarray:
+def reduceMatrix(args: Namespace, matrix: np.ndarray, freeVariables: List[int]) -> np.ndarray:
     """
     Reduce a binary matrix by performing additional operations based on free variables.
 
@@ -233,7 +233,7 @@ def reduceMatrix(args: Namespace, matrix: numpy.ndarray, freeVariables: List[int
 
     for column in range(1, matrix.shape[1]):
         # If the column is not a free variable and not fully reduced
-        if column not in freeVariables and numpy.sum(matrix.T[column]) > 1:
+        if column not in freeVariables and np.sum(matrix.T[column]) > 1:
             currentPivotRow = 0
             # Iterate upwards through the rows
             for row in range(matrix.shape[0] - 1, -1, -1):
@@ -243,15 +243,15 @@ def reduceMatrix(args: Namespace, matrix: numpy.ndarray, freeVariables: List[int
                     if currentPivotRow == 0:
                         currentPivotRow = row
                     else:
-                        matrix[row][:] = numpy.logical_xor(matrix[row][:], matrix[currentPivotRow][:])
+                        matrix[row][:] = np.logical_xor(matrix[row][:], matrix[currentPivotRow][:])
 
-    matrix = matrix[~numpy.all(matrix == False, 
-                               axis=1)]
+    matrix = matrix[~np.all(matrix == False, 
+                            axis=1)]
 
     return matrix
 
 
-def getBaseVectors(args: Namespace, matrix: numpy.ndarray, freeVariables: List[int]) -> List[numpy.ndarray]:
+def getBaseVectors(args: Namespace, matrix: np.ndarray, freeVariables: List[int]) -> List[np.ndarray]:
     """
     Find and return the base vectors from a binary matrix based on free variables.
 
@@ -267,11 +267,11 @@ def getBaseVectors(args: Namespace, matrix: numpy.ndarray, freeVariables: List[i
     
     # Insert extra rows to extract complete vectors
     for variable in freeVariables:
-        matrix = numpy.insert(arr=matrix, 
-                              obj=variable,
-                              values=numpy.zeros(shape=[1, matrix.shape[1]], 
-                                                 dtype=numpy.bool_), 
-                              axis=0)
+        matrix = np.insert(arr=matrix, 
+                           obj=variable,
+                           values=np.zeros(shape=[1, matrix.shape[1]], 
+                                           dtype=np.bool_), 
+                           axis=0)
         matrix[variable][variable] = 1
 
     # Save all columns which represent free variables
@@ -283,7 +283,7 @@ def getBaseVectors(args: Namespace, matrix: numpy.ndarray, freeVariables: List[i
     return baseVectors
 
 
-def calculateRelationsMatrix(args: Namespace, baseVectors: List[numpy.ndarray], relationsAmount: int, cipherText: List[str]) -> numpy.ndarray:
+def calculateRelationsMatrix(args: Namespace, baseVectors: List[np.ndarray], relationsAmount: int, cipherText: List[str]) -> np.ndarray:
     """
     Calculate a relations matrix based on base vectors and a cipher text matrix.
 
@@ -298,32 +298,32 @@ def calculateRelationsMatrix(args: Namespace, baseVectors: List[numpy.ndarray], 
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating relations matrix')
     
-    relationsMatrix = numpy.zeros(shape=[0, relationsAmount], 
-                                  dtype=numpy.bool_)
+    relationsMatrix = np.zeros(shape=[0, relationsAmount], 
+                               dtype=np.bool_)
 
     # Logical AND every position of the ciphertext with 'relationsAmount'-large parts of the base vectors
     for vector in baseVectors:
-        relation = numpy.zeros(shape=[1, relationsAmount], 
-                               dtype=numpy.bool_)
+        relation = np.zeros(shape=[1, relationsAmount], 
+                            dtype=np.bool_)
         for i in range(0, relationsAmount):
             result = 0
             for j in range(0, relationsAmount):
                 result += int(cipherText[j]) * int(vector[i * relationsAmount + j])
             relation[0][i] = result % 2
-        relationsMatrix = numpy.vstack((relationsMatrix, relation))
+        relationsMatrix = np.vstack((relationsMatrix, relation))
     return relationsMatrix
 
 
-def calculateInitialMatrix(args: Namespace) -> Tuple[List[str], List[str], int, numpy.ndarray]:
+def calculateInitialMatrix(args: Namespace) -> Tuple[List[str], List[str], int, np.ndarray]:
     publicKey, cipherText, relationsAmount = readFile(args)
     plainTextArray = generatePlainText(args, relationsAmount)
     cipherTextsArray = calculateCipherText(args, publicKey, plainTextArray)
     matrix = calculateMatrix(args, plainTextArray, cipherTextsArray)
     
     return publicKey, cipherText, relationsAmount, matrix
-    
 
-def solveInitialMatrix(args: Namespace, matrix: numpy.ndarray, relationsAmount: int, cipherText: List[str]) -> numpy.ndarray:
+
+def solveInitialMatrix(args: Namespace, matrix: np.ndarray, relationsAmount: int, cipherText: List[str]) -> np.ndarray:
     solvedMatrix = gaussianElimination(args, matrix)
     freeVariables = getFreeVariables(args, solvedMatrix)
     reducedMatrix = reduceMatrix(args, solvedMatrix, freeVariables)
@@ -333,16 +333,16 @@ def solveInitialMatrix(args: Namespace, matrix: numpy.ndarray, relationsAmount: 
     return relationsMatrix
 
 
-def solveRelationsMatrix(args: Namespace, relationsMatrix: numpy.ndarray) -> List[numpy.ndarray]:
+def solveRelationsMatrix(args: Namespace, relationsMatrix: np.ndarray) -> List[np.ndarray]:
     solvedMatrix = gaussianElimination(args, relationsMatrix)
     freeVariables = getFreeVariables(args, solvedMatrix)
     reducedMatrix = reduceMatrix(args, solvedMatrix, freeVariables)
     baseVectors = getBaseVectors(args, reducedMatrix, freeVariables)
     
     return baseVectors
-    
 
-def verifyResult(args: Namespace, publicKey: List[str], baseVectors: List[numpy.ndarray], cipherText: List[str]) -> bool:
+
+def verifyResult(args: Namespace, publicKey: List[str], baseVectors: List[np.ndarray], cipherText: List[str]) -> bool:
     """
     Verify the correctness of the solution by calculating the cipher text from the plain text solution and
     matching it to the cipher text from the source file.
@@ -359,7 +359,7 @@ def verifyResult(args: Namespace, publicKey: List[str], baseVectors: List[numpy.
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Verifying the result')
     
     # Calculate the cipher text with the plain text solution (baseVectors) and the public key
-    result = calculateCipherText(args, publicKey, numpy.array(baseVectors))
+    result = calculateCipherText(args, publicKey, np.array(baseVectors))
     
     # Match the cipher text solution with the cipher text from the *.txt file
     isCorrect = True
@@ -386,13 +386,13 @@ def executePipeline(args: Namespace) -> None:
     
     currentTime = datetime.now().strftime("%H:%M:%S")  
     if isCorrect:
-        print(f'[{currentTime}] Successful! Plain text solution: {numpy.array(baseVectors, dtype=numpy.uint8)}')
+        print(f'[{currentTime}] Successful! Plain text solution: {np.array(baseVectors, dtype=np.uint8)}')
         if args.verbose:
               print(f'[{currentTime}] Solved in: {round((time() - startingTime), 2)} seconds')
     else:
         print(f'[{currentTime}] Decryption failed')
-        
-        
+
+
 def setupArgumentParser() -> Namespace:
     parser = ArgumentParser(description='Decrypt a ciphertext of an Matsumoto-Imai-Encryption based on the given public key.')
     parser.add_argument('filepath', 
