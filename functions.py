@@ -150,12 +150,12 @@ def gaussianElimination(args: Namespace, matrix: np.ndarray) -> np.ndarray:
             matrix = np.flipud(matrix[matrix[:, columnIndex].argsort()])
 
             # Move the row with the XXX amount of Trues/ones to the top
-            optimalRowSum = 0
+            optimalRowSum = matrix.shape[1]
             optimalRowIndex = 0
             for rowIndex, row in enumerate(matrix):
                 if row[columnIndex] == True:
                     rowSum = np.count_nonzero(row)
-                    if rowSum > optimalRowSum:
+                    if rowSum < optimalRowSum:
                         optimalRowSum = rowSum
                         optimalRowIndex = rowIndex
                 else:
