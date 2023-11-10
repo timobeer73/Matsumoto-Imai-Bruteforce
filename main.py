@@ -136,26 +136,39 @@ def gaussianElimination(args: Namespace, matrix: numpy.ndarray) -> numpy.ndarray
     """
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Starting gaussian elimination')
-
-    # Remove every duplicate and False/zero only rows
-    matrix = numpy.unique(ar=matrix, 
-                          axis=0)
-    matrix = matrix[~numpy.all(matrix == False, 
-                               axis=1)]
     
     solvedMatrix = numpy.zeros(shape=[0, matrix.shape[1]], 
                                dtype=numpy.bool_)
-
-    for column in range(0, matrix.shape[1]):
+    for columnIndex in range(0, matrix.shape[1]):
+        # Remove every duplicate and False/zero only rows
+        matrix = numpy.unique(ar=matrix, 
+                              axis=0)
+        matrix = matrix[~numpy.all(matrix == False, 
+                                   axis=1)]
+        
         if matrix.shape[0] > 1:
             # Move all rows with a True/one in the nth column to the top of the matrix
-            matrix = numpy.flipud(matrix[matrix[:, column].argsort()])
-            
+            matrix = numpy.flipud(matrix[matrix[:, columnIndex].argsort()])
+
+            # Move the row with the XXX amount of Trues/ones to the top
+            optimalRowSum = 0
+            optimalRowIndex = 0
+            for rowIndex, row in enumerate(matrix):
+                if row[columnIndex] == True:
+                    rowSum = numpy.count_nonzero(row)
+                    if rowSum > optimalRowSum:
+                        optimalRowSum = rowSum
+                        optimalRowIndex = rowIndex
+                else:
+                    break
+            if optimalRowIndex != 0:
+                matrix[[0, optimalRowIndex]] = matrix[[optimalRowIndex, 0]]
+
             # Logical XOR the current pivot row with all followings rows, which contain a True/one in the nth column
-            if matrix[0][column] == True:
-                for row in range(1, matrix.shape[0]):
-                    if matrix[row][column] == True:
-                        matrix[row][:] = numpy.logical_xor(matrix[0][:], matrix[row][:])
+            if matrix[0][columnIndex] == True:
+                for rowIndex in range(1, matrix.shape[0]):
+                    if matrix[rowIndex][columnIndex] == True:
+                        matrix[rowIndex][:] = numpy.logical_xor(matrix[0][:], matrix[rowIndex][:])
                     else:
                         break
             else:
@@ -170,9 +183,6 @@ def gaussianElimination(args: Namespace, matrix: numpy.ndarray) -> numpy.ndarray
         else:
             break
         
-    solvedMatrix = solvedMatrix[~numpy.all(solvedMatrix == False, 
-                                           axis=1)]
-
     return solvedMatrix
 
 
@@ -298,7 +308,7 @@ def calculateRelationsMatrix(args: Namespace, baseVectors: List[numpy.ndarray], 
         for i in range(0, relationsAmount):
             result = 0
             for j in range(0, relationsAmount):
-                result += int(cipherText[i]) * int(vector[i * relationsAmount + j])
+                result += int(cipherText[j]) * int(vector[i * relationsAmount + j])
             relation[0][i] = result % 2
         relationsMatrix = numpy.vstack((relationsMatrix, relation))
     return relationsMatrix
@@ -319,7 +329,7 @@ def solveInitialMatrix(args: Namespace, matrix: numpy.ndarray, relationsAmount: 
     reducedMatrix = reduceMatrix(args, solvedMatrix, freeVariables)
     baseVectors = getBaseVectors(args, reducedMatrix, freeVariables)
     relationsMatrix = calculateRelationsMatrix(args, baseVectors, relationsAmount, cipherText)
-
+    
     return relationsMatrix
 
 
@@ -348,7 +358,7 @@ def verifyResult(args: Namespace, publicKey: List[str], baseVectors: List[numpy.
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Verifying the result')
     
-    # Calculate the cipher text with the plain text solution (baseVectors)
+    # Calculate the cipher text with the plain text solution (baseVectors) and the public key
     result = calculateCipherText(args, publicKey, numpy.array(baseVectors))
     
     # Match the cipher text solution with the cipher text from the *.txt file
@@ -376,7 +386,7 @@ def executePipeline(args: Namespace) -> None:
     
     currentTime = datetime.now().strftime("%H:%M:%S")  
     if isCorrect:
-        print(f'[{currentTime}] Plain text solution: {numpy.array(baseVectors, dtype=numpy.uint8)}\n')
+        print(f'[{currentTime}] Successful! Plain text solution: {numpy.array(baseVectors, dtype=numpy.uint8)}')
         if args.verbose:
               print(f'[{currentTime}] Solved in: {round((time() - startingTime), 2)} seconds')
     else:
