@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import List, Tuple
 from argparse import Namespace
 from math import pow as mathPow
+from multiprocessing import Pool, cpu_count
 
 
 def readFile(args: Namespace) -> Tuple[List[str], List[str], int]:
@@ -66,6 +67,21 @@ def generatePlainText(args: Namespace, relationsAmount: int) -> np.ndarray:
     return plainTextMatrix
 
 
+def calculateCipherTextRow(args, publicKey, rowSize, cipherTextMatrixRow, plainTextMatrixRow):
+    # Replace the placeholder variables (x_n) of the public key with the corresponding plain text values.
+    for columnIndex, publicKeyRow in enumerate(publicKey):
+        for variableIndex in reversed(range(0, rowSize)):
+            publicKeyRow = publicKeyRow.replace(f'x_{variableIndex + 1}', str(plainTextMatrixRow[variableIndex]))
+        # Calculate the constructed formula.
+        cipherTextMatrixRow[columnIndex] = eval(publicKeyRow) % 2
+    
+    return cipherTextMatrixRow
+
+
+def calculateCipherTextRowWrapper(args):
+    return calculateCipherTextRow(*args)
+
+
 def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: np.ndarray) -> np.ndarray:
     """
     Calculate the corresponding cipher text using the public key and plain text matrix.
@@ -84,13 +100,10 @@ def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: 
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating {matrixDimensions[0]} corresponding cipher texts')
 
-    # Replace the placeholder variables (x_n) of the public key with the corresponding plain text values.
-    for row in range(0, matrixDimensions[0]):
-        for column, publicKeyRow in enumerate(publicKey):
-            for variable in reversed(range(0, matrixDimensions[1])):
-                publicKeyRow = publicKeyRow.replace(f'x_{variable + 1}', str(plainTextMatrix[row][variable]))
-            # Calculate the constructed formula.
-            cipherTextMatrix[row][column] = eval(publicKeyRow) % 2
+    with Pool(processes=min(matrixDimensions[0], cpu_count())) as pool:
+        result = pool.map(calculateCipherTextRowWrapper, [(args, publicKey, matrixDimensions[1], cipherTextMatrix[rowIndex][:], plainTextMatrix[rowIndex][:]) for rowIndex in range(matrixDimensions[0])])
+    
+    cipherTextMatrix = np.array(result)
 
     return cipherTextMatrix
 
