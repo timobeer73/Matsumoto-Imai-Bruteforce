@@ -67,7 +67,20 @@ def generatePlainText(args: Namespace, relationsAmount: int) -> np.ndarray:
     return plainTextMatrix
 
 
-def calculateCipherTextRow(args, publicKey, rowSize, cipherTextMatrixRow, plainTextMatrixRow):
+def calculateCipherTextRow(publicKey: List[str], rowSize: int, cipherTextMatrixRow: np.ndarray, plainTextMatrixRow: np.ndarray) -> np.ndarray:
+    """
+    Replace the placeholder variables in the public key with the corresponding plain text values
+    and calculate the constructed formula for a single row of the cipher text matrix.
+
+    Args:
+        publicKey (List[str]): A list of strings representing the public key with variable placeholders.
+        rowSize (int): The size of each row in the cipher text matrix.
+        cipherTextMatrixRow (np.ndarray): A 1D numpy array representing a row in the cipher text matrix.
+        plainTextMatrixRow (np.ndarray): A 1D numpy array representing a row in the plain text matrix.
+
+    Returns:
+        np.ndarray: A 1D numpy array representing the corresponding row in the cipher text matrix.
+    """
     # Replace the placeholder variables (x_n) of the public key with the corresponding plain text values.
     for columnIndex, publicKeyRow in enumerate(publicKey):
         for variableIndex in reversed(range(0, rowSize)):
@@ -78,7 +91,16 @@ def calculateCipherTextRow(args, publicKey, rowSize, cipherTextMatrixRow, plainT
     return cipherTextMatrixRow
 
 
-def calculateCipherTextRowWrapper(args):
+def calculateCipherTextRowWrapper(args: Tuple) -> np.ndarray:
+    """
+    Wrapper function for calculateCipherTextRow to be used with multiprocessing.
+
+    Args:
+        args (Tuple): A tuple containing the arguments for calculateCipherTextRow.
+
+    Returns:
+        np.ndarray: A 1D numpy array representing the corresponding row in the cipher text matrix.
+    """
     return calculateCipherTextRow(*args)
 
 
@@ -101,7 +123,7 @@ def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: 
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating {matrixDimensions[0]} corresponding cipher texts')
 
     with Pool(processes=min(matrixDimensions[0], cpu_count())) as pool:
-        result = pool.map(calculateCipherTextRowWrapper, [(args, publicKey, matrixDimensions[1], cipherTextMatrix[rowIndex][:], plainTextMatrix[rowIndex][:]) for rowIndex in range(matrixDimensions[0])])
+        result = pool.map(calculateCipherTextRowWrapper, [(publicKey, matrixDimensions[1], cipherTextMatrix[rowIndex][:], plainTextMatrix[rowIndex][:]) for rowIndex in range(matrixDimensions[0])])
     
     cipherTextMatrix = np.array(result)
 
