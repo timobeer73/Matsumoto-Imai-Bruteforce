@@ -1,9 +1,24 @@
 import numpy as np
 from datetime import datetime
-from typing import List, Tuple
 from argparse import Namespace
 from math import pow as mathPow
+from typing import List, Tuple
 from multiprocessing import Pool, cpu_count
+
+
+def multiprocessingWrapper(args: Tuple) -> np.ndarray:
+    """
+    Wrapper function for calculateCipherTextRow and calculateMatrixRow to be used with multiprocessing.
+
+    Args:
+        args (Tuple): A tuple containing the function name and the corresponding arguments.
+
+    Returns:
+        np.ndarray: A 1D numpy array representing the corresponding row in the cipher text or relations matrix.
+    """
+    correspondingFunction, args = args
+    
+    return correspondingFunction(*args)
 
 
 def readFile(args: Namespace) -> Tuple[List[str], List[str], int]:
@@ -91,19 +106,6 @@ def calculateCipherTextRow(publicKey: List[str], rowSize: int, cipherTextMatrixR
     return cipherTextMatrixRow
 
 
-def calculateCipherTextRowWrapper(args: Tuple) -> np.ndarray:
-    """
-    Wrapper function for calculateCipherTextRow to be used with multiprocessing.
-
-    Args:
-        args (Tuple): A tuple containing the arguments for calculateCipherTextRow.
-
-    Returns:
-        np.ndarray: A 1D numpy array representing the corresponding row in the cipher text matrix.
-    """
-    return calculateCipherTextRow(*args)
-
-
 def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: np.ndarray) -> np.ndarray:
     """
     Calculate the corresponding cipher text using the public key and plain text matrix.
@@ -123,11 +125,38 @@ def calculateCipherText(args: Namespace, publicKey: List[str], plainTextMatrix: 
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating {matrixDimensions[0]} corresponding cipher texts')
 
     with Pool(processes=min(matrixDimensions[0], cpu_count())) as pool:
-        result = pool.map(calculateCipherTextRowWrapper, [(publicKey, matrixDimensions[1], cipherTextMatrix[rowIndex][:], plainTextMatrix[rowIndex][:]) for rowIndex in range(matrixDimensions[0])])
-    
+        result = pool.map(multiprocessingWrapper, 
+                          [(calculateCipherTextRow, 
+                            (publicKey, matrixDimensions[1], cipherTextMatrix[rowIndex][:], plainTextMatrix[rowIndex][:])) for rowIndex in range(matrixDimensions[0])])
+
     cipherTextMatrix = np.array(result)
 
     return cipherTextMatrix
+
+
+def calculateMatrixRow(plainTextRow: np.ndarray, cipherTextMatrixRow: np.ndarray) -> np.ndarray:
+    """
+    Calculate a row of the matrix by performing logical AND operations between the plain text row and cipher text matrix.
+
+    Args:
+        args (Namespace): Command-line arguments.
+        plainTextRow (np.ndarray): A 1D numpy array representing a row in plain text.
+        cipherTextMatrixRow (np.ndarray): A 2D numpy array representing a row in the cipher text matrix.
+
+    Returns:
+        np.ndarray: A 1D numpy array representing the result of the logical AND operations between
+                    corresponding elements of the input row and matrix.
+    """
+    matrixDimension = plainTextRow.shape[0] * cipherTextMatrixRow.shape[0]
+    matrixRow = np.zeros(shape=matrixDimension, 
+                         dtype=np.bool_)
+
+    for plainTextColumn in range(0, plainTextRow.shape[0]):
+        for cipherTextColumn in range(0, cipherTextMatrixRow.shape[0]):
+            matrixRow[plainTextColumn * cipherTextMatrixRow.shape[0] + cipherTextColumn] = \
+                bool(plainTextRow[plainTextColumn]) and bool(cipherTextMatrixRow[cipherTextColumn])
+
+    return matrixRow
 
 
 def calculateMatrix(args: Namespace, plainTextMatrix: np.ndarray, cipherTextMatrix: np.ndarray) -> np.ndarray:
@@ -149,12 +178,12 @@ def calculateMatrix(args: Namespace, plainTextMatrix: np.ndarray, cipherTextMatr
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Calculating matrix from plain and cipher text')
 
-    # Logical AND every single column of the plain text row with every column of the cipher text.
-    for row in range(0, matrixDimension[0]):
-        for plainTextColumn in range(0, plainTextMatrix.shape[1]):
-            for cipherTextColumn in range(0, cipherTextMatrix.shape[1]):
-                matrix[row][plainTextColumn * plainTextMatrix.shape[1] + cipherTextColumn] = \
-                    bool(plainTextMatrix[row][plainTextColumn]) and bool(cipherTextMatrix[row][cipherTextColumn])
+    with Pool(processes=min(matrixDimension[0], cpu_count())) as pool:
+        result = pool.map(multiprocessingWrapper, 
+                          [(calculateMatrixRow, 
+                            (plainTextMatrix[row, :], cipherTextMatrix[row, :])) for row in range(matrixDimension[0])])
+
+    matrix = np.array(result)
 
     return matrix
 
@@ -171,41 +200,18 @@ def gaussianElimination(args: Namespace, matrix: np.ndarray) -> np.ndarray:
     """
     if args.verbose:
         print(f'[{datetime.now().strftime("%H:%M:%S")}] Starting gaussian elimination')
-        
-    # Remove all duplicates and every row which only contains False/zeros.
-    matrix = np.unique(ar=matrix, 
-                       axis=0)
-    matrix = matrix[~np.all(matrix == False, 
-                            axis=1)]
     
     solvedMatrix = np.zeros(shape=[0, matrix.shape[1]], 
                             dtype=np.bool_)
     for columnIndex in range(0, matrix.shape[1]):
         # Move all rows with a True/one in the nth column to the top of the matrix.
         matrix = np.flipud(matrix[matrix[:, columnIndex].argsort()])
-        if matrix[0][columnIndex] == True:
+        if matrix[0][columnIndex]:
             if matrix.shape[0] > 1:
-                # Move the row with the lowest amount of True/ones to the top.
-                optimalRowSum = matrix.shape[1]
-                optimalRowIndex = 0
-                for rowIndex, row in enumerate(matrix):
-                    if row[columnIndex] == True:
-                        rowSum = np.count_nonzero(row)
-                        if rowSum < optimalRowSum:
-                            optimalRowSum = rowSum
-                            optimalRowIndex = rowIndex
-                    else:
-                        break
-                if optimalRowIndex != 0:
-                    matrix[[0, optimalRowIndex]] = matrix[[optimalRowIndex, 0]]
-
                 # Logical XOR the current pivot row with all followings rows, which contain a 
                 # True/one in the nth column.
-                for rowIndex in range(1, matrix.shape[0]):
-                    if matrix[rowIndex][columnIndex] == True:
-                        matrix[rowIndex][:] = np.logical_xor(matrix[0][:], matrix[rowIndex][:])
-                    else:
-                        break
+                for rowIndex in range(1, np.sum(matrix[:, columnIndex])):
+                    matrix[rowIndex][:] = np.logical_xor(matrix[0][:], matrix[rowIndex][:])
             
             if matrix.shape[0] > 0:  
                 # Store the current pivot row in the output matrix and delete the same row in the input matrix.
@@ -215,11 +221,6 @@ def gaussianElimination(args: Namespace, matrix: np.ndarray) -> np.ndarray:
                                 axis=0)
             else:
                 break
-            
-    matrix = np.unique(ar=matrix, 
-                       axis=0)
-    matrix = matrix[~np.all(matrix == False, 
-                            axis=1)]
     
     return solvedMatrix
 
@@ -275,14 +276,11 @@ def reduceMatrix(args: Namespace, matrix: np.ndarray, freeVariables: List[int]) 
         if column not in freeVariables and np.sum(matrix.T[column]) > 1:
             # Iterate upwards and search for a True/one in the specific column.
             for overlyingRowIndex in range(column - offset - 1, -1, -1):
-                if matrix[overlyingRowIndex][column] == True:
+                if matrix[overlyingRowIndex][column]:
                     # Logical XOR the rows matching the previous criteria.
-                    matrix[overlyingRowIndex][:] = np.logical_xor(matrix[overlyingRowIndex][:], matrix[column - offset][:])
+                    matrix[overlyingRowIndex] = np.logical_xor(matrix[overlyingRowIndex], matrix[column - offset])
         if column in freeVariables:
             offset += 1
-
-    matrix = matrix[~np.all(matrix == False, 
-                            axis=1)]
     
     return matrix
 
