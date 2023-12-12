@@ -12,14 +12,14 @@ def setupArgumentParser() -> Namespace:
     Returns:
         Namespace: A namespace containing the parsed command-line arguments.
     """
-    parser = ArgumentParser(description='Decrypt a ciphertext of an Matsumoto-Imai-Encryption based on the given public key.')
-    parser.add_argument('filepath', 
-                        type=str, 
+    parser = ArgumentParser(description='Decrypt a ciphertext using Matsumoto-Imai-Encryption based on the given public key.')
+    parser.add_argument('filepath',
+                        type=str,
                         help='Path of the formatted file.')
-    parser.add_argument('-v', '--verbose', 
-                        action='store_true', 
+    parser.add_argument('-v', '--verbose',
+                        action='store_true',
                         help='Print additional information.')
-    
+
     return parser.parse_args()
 
 

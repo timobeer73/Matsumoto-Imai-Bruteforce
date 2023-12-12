@@ -17,7 +17,7 @@ def multiprocessingWrapper(args: Tuple) -> np.ndarray:
         np.ndarray: A 1D numpy array representing the corresponding row in the cipher text or relations matrix.
     """
     correspondingFunction, args = args
-    
+
     return correspondingFunction(*args)
 
 
